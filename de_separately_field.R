@@ -7,7 +7,7 @@ library(pheatmap)
 library(viridis)
 
 species <- 'Eve'
-population <- 'PB'
+population <- 'BK'
 dir_to_results <- paste0('labeglo2/MS_results/Field/', species, '/', population)
 
 ### 1. Upload metafile
@@ -48,6 +48,7 @@ dat <- dat[,grepl('BK|pool', colnames(dat))]
 dat <- dat[,!grepl('pool_12', colnames(dat))]
 meta <- meta[!grepl('PB|pool_12', meta$sample),]
 
+# to select PB population
 dat <- dat[,grepl('PB|pool', colnames(dat))]
 meta <- meta[!grepl('BK', meta$sample),]
 
@@ -95,12 +96,14 @@ exp10_raw <- data_raw[,subset(meta, experiment == 10)$sample]
 exp11_raw <- data_raw[,subset(meta, experiment == 11)$sample]
 #exp12_raw <- data_raw[,subset(meta, experiment == 12)$sample]
 
-target <- mean(c(colSums(exp1_raw, na.rm = T), colSums(exp2_raw, na.rm = T), 
+target <- median(c(colSums(exp1_raw, na.rm = T), colSums(exp2_raw, na.rm = T), 
                  colSums(exp3_raw, na.rm = T), colSums(exp4_raw, na.rm = T),
                  colSums(exp5_raw, na.rm = T), colSums(exp6_raw, na.rm = T),
                  colSums(exp7_raw, na.rm = T), colSums(exp8_raw, na.rm = T),
                  colSums(exp9_raw, na.rm = T), colSums(exp10_raw, na.rm = T),
-                 colSums(exp11_raw, na.rm = T), colSums(exp12_raw, na.rm = T)),
+                 colSums(exp11_raw, na.rm = T) 
+                 #,colSums(exp12_raw, na.rm = T)
+                 ),
                na.rm = T)
 
 norm_facs <- target / colSums(exp1_raw, na.rm = T)
@@ -130,7 +133,9 @@ exp11_sl <- sweep(exp11_raw, 2, norm_facs, FUN = "*")
 
 data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl, exp5_sl,
                  exp6_sl, exp7_sl, exp8_sl, exp9_sl, exp10_sl,
-                 exp11_sl, exp12_sl)
+                 exp11_sl
+                 #, exp12_sl
+                 )
 
 boxplot(log2(data_sl), 
         notch = TRUE, main = "Sample Loading (SL) normalized data",
@@ -245,23 +250,36 @@ edger_analysis_wrap <- function(norm_data, protein_annotation,
 }
 
 # wo NAs
+sign_protein_info_sub_allcomb <- NULL
 data_wo_na <- na.omit(data_irs)
 SignProteinInfo_0 <- edger_analysis_wrap(norm_data = data_wo_na, 
                                          protein_annotation = pep_annot, 
-                                         cond2compare = c("November_PB", 
-                                                          "December_PB"), 
+                                         cond2compare = c("January_BK", 
+                                                          "June_BK"), 
                                          metafile = meta)
 
+sign_protein_info_sub <- subset(SignProteinInfo_0, FDR < 0.05)
+
+sign_protein_info_sub_allcomb <- rbind(sign_protein_info_sub_allcomb,
+                                       sign_protein_info_sub)
+
+protein_changed_unique <- unique(sign_protein_info_sub_allcomb$protein)
 #write.table(data_wo_na, file.path(dir_to_results, 'intensities_after_slNorm_woNA_eve.csv'), 
 #            sep = '\t', quote = F, row.names = T)
 
-### Heatmap for all genes
+save(protein_changed_unique, file = paste0(dir_to_results, 
+                                           '/sign_changed_proteins_allmonths.rda'))
+
+### Heatmap for all genes ######################################################
 
 # Prepare intensities data: scale the data -> transport it back 
 intensities <- data_wo_na
 scaled_intensities <- apply(intensities, 1, scale)
 scaled_intensities <- t(scaled_intensities)
 colnames(scaled_intensities) <- meta$sample
+
+scaled_intensities_only_sign <- 
+  scaled_intensities[row.names(scaled_intensities) %in% protein_changed_unique,]
 
 # Prepare the annotation table:
 annot_col <- data.frame(Months = factor(meta$condition),
@@ -286,7 +304,12 @@ annot_colours <- list(Months = c("December_PB" = "dodgerblue1",
                               "male" = "aquamarine4",
                               "NA" = "grey"))
 # Draw the heatmap
-pheatmap(scaled_intensities,
+to_plot <- scaled_intensities
+to_plot <- scaled_intensities_only_sign
+
+### !!!! the name !!!!
+
+pheatmap(to_plot,
          color = plasma(10),
          show_rownames = F,
          clustering_distance_cols = "correlation",
@@ -297,7 +320,7 @@ pheatmap(scaled_intensities,
          width = 15,
          filename = file.path(dir_to_results, 
                               paste0(species, '_', population,
-                                     '_heatmap_genes_all', '.png')))
+                                     '_heatmap_genes_allsign', '.png')))
 if (dev.cur() != 1) {dev.off()}
 
 # clustering of seasonal profiles and visualizing temporal profiles of proteins -> time_series.R
