@@ -6,7 +6,7 @@ library(ggfortify)
 library(pheatmap)
 library(viridis)
 
-species <- 'Eve'
+species <- 'Ecy'
 population <- 'BK'
 #dir_to_results <- paste0('labeglo2/MS_results/Field/', species, '/', population)
 dir_to_results <- paste0('labeglo2/MS_results/Field/', species, '/', species, 
@@ -131,7 +131,7 @@ target <- mean(c(colSums(exp1_raw, na.rm = T), colSums(exp2_raw, na.rm = T),
                    colSums(exp3_raw, na.rm = T), colSums(exp4_raw, na.rm = T),
                    colSums(exp5_raw, na.rm = T), colSums(exp6_raw, na.rm = T),
                    colSums(exp7_raw, na.rm = T)),
-                   na.rm = T)
+                   na.rm = T) # Ecy
 target <- mean(c(colSums(exp1_raw, na.rm = T), colSums(exp2_raw, na.rm = T), 
                  colSums(exp3_raw, na.rm = T), colSums(exp4_raw, na.rm = T),
                  colSums(exp5_raw, na.rm = T)),
@@ -171,7 +171,7 @@ data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl, exp5_sl,
                  #, exp12_sl
                  )
 data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl, exp5_sl,
-                 exp6_sl, exp7_sl)
+                 exp6_sl, exp7_sl) # Ecy
 data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl, exp5_sl) # Gla
 data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl)
 
@@ -228,7 +228,7 @@ meta2$condition <- sub('_BK', '', meta2$condition)
 #meta2 <- subset(meta2, !grepl('pool', sample)) # to draw wo pools
 autoplot(pca_res, data=meta2, colour='condition', size = 3, shape='sex') + theme_light()
 autoplot(pca_res, data=meta2, colour='condition', size = 3, 
-         shape='sex', 
+         #shape='sex', 
          frame = F, 
          x = 1,
          y = 2) + 

@@ -267,7 +267,7 @@ correlation_heatmap <- function(dir=current_dir, plot_width=900, plot_height=900
 
 correlation_heatmap(power=sth_power, MCH=0.15, MMS=25, ds=4, species = species,
                     plot_width=1150, plot_height=900,
-                    nameOfexp = 'Seasons_short')
+                    nameOfexp = 'Seasons_short2')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
 trait <- 'Jun'
@@ -721,7 +721,7 @@ gene_go_bonus_ <- gene_go_bonus$go_term
 names(gene_go_bonus_) <- gene_go_bonus$up_gene_name
 
 #####
-module <- 'magenta'
+module <- 'black'
 intensity_long$MM <- proteinInfo_final[pr_id, paste0('MM.', module)]
 
 intensity_long$pMM <- proteinInfo_final[pr_id,]$p.MM.green
@@ -761,13 +761,14 @@ gene_go_all_ <- c(gene_go_, gene_go_from_bonus)
 proteins_list4 <- proteins_list2[names(proteins_list2) %in% names(gene_go_all_)]
 
 # run topgo
-threshold <- 0.6
+threshold <- 0.5
 ontology <- 'BP'
 GOdata <- new("topGOdata", description = "Simple session", 
               ontology = ontology,
               allGenes = proteins_list4, 
               #geneSel = function(x) x < 0.01, # pMM, pGS
-              geneSel = function(x) abs(x) > threshold, # MM, GS
+              #geneSel = function(x) abs(x) > threshold, # MM, GS
+              geneSel = function(x) x > threshold,
               nodeSize = 8,
               annot = annFUN.gene2GO, 
               gene2GO = gene_go_all_)
@@ -824,7 +825,7 @@ intensity_long_sub$whole_label2 <- factor(intensity_long_sub$whole_label,
 intensity_long_sub$MM <- intensity_long[match(intensity_long_sub$protein, 
                                           intensity_long$protein),]$MM
 
-GO2draw <- 'GO:0006096'
+GO2draw <- 'GO:0055002'
 wanted <- proteins_list4[names(proteins_list4) %in% allGO[[GO2draw]]] 
 proteints2plot <- wanted[abs(wanted) > threshold]
 intensity_long_sub_toplot <- subset(intensity_long_sub, MM %in% proteints2plot)
@@ -852,7 +853,7 @@ intensity_long_sub_toplot$sex <- meta[match(intensity_long_sub_toplot$sample,
                                             meta$sample),]$sex
 
 ggplot(intensity_long_sub_toplot, aes(time, intensity, group = time)) +
-  facet_wrap(~ whole_label2, ncol = 5,
+  facet_wrap(~ whole_label2, ncol = 4,
              labeller = as_labeller(get_protein_label)
              ) +
              #, scales = 'free_y') +
@@ -880,7 +881,7 @@ ggsave(file.path(current_dir, paste0('boxplots_', module,
                              'Module_MM', threshold,
                              '_ontology', ontology, '_',  GO2draw,'.png')), 
        scale = 0.8,
-       width = 10, height = 6)
+       width = 8, height = 4)
 
 ##### To look at certain proteins:
 intensity_long_sub_toplot <- subset(intensity_long_sub, 

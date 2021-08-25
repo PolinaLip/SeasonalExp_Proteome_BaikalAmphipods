@@ -7,22 +7,46 @@ library(ggplot2)
 library(ggrepel)
 library(rstatix)
 
-species <- 'Eve'
-month1 <- 'JUN'
+species <- 'Ecy'
+month1 <- 'JAN'
 month2 <- 'SEP'
 
+dir_to_save_res <- paste0('labeglo2/MS_results/Field_Grad_Comparison/', species)
+
 # 1. Upload dataframes after EdgeR (de_separately...R)
-dir_field <- 'labeglo2/MS_results/Field/Eve/Eve_refchannels_all'
+dir_field <- paste0('labeglo2/MS_results/Field/', species,'/', species, '_refchannels_all')
 proteins_field <- 
   read.csv(paste0(dir_field, '/', species,
                   '_edgeResults_', month1, 'vs', month2, '_proteinGroups.csv'),
            sep = '\t', header = T)
 
-dir_grad <- 'labeglo2/MS_results/GradDecrease_2/separately_assembled/Eve'
+dir_grad <- paste0('labeglo2/MS_results/GradDecrease_2/separately_assembled/', species)
+
+## Eve
 proteins_grad <- 
   read.csv(paste0(dir_grad, '/', species,
                   'BK_edgeResults_10.5vs1.5_proteinGroups.csv'),
-           sep = '\t', header = T)
+           sep = '\t', header = T) # Eve
+
+## Ecy
+proteins_grad <- 
+  read.csv(paste0(dir_grad, '/', species,
+                  '_edgeResults_1.5vs10.5ALL_proteinGroups.csv'),
+           sep = '\t', header = T) # Ecy
+proteins_grad <- 
+  read.csv(paste0(dir_grad, '/', species,
+                  '_edgeResults_1.5vs10.5parall_proteinGroups.csv'),
+           sep = '\t', header = T) # Ecy
+
+proteins_grad <- 
+  read.csv(paste0(dir_grad, '/', species,
+                  '_edgeResults_6vs10.5ALL_proteinGroups.csv'),
+           sep = '\t', header = T) # Ecy
+
+proteins_grad <- 
+  read.csv(paste0(dir_grad, '/', species,
+                  '_edgeResults_6vs10.5parall_proteinGroups.csv'),
+           sep = '\t', header = T) # Ecy
 
 # 2. "Open" protein group names and sort contig names inside them, them "close" them back
 new_protein_name <- lapply(str_split(proteins_field$protein, ';'), sort)
@@ -37,10 +61,15 @@ protein_name_grid <- expand.grid(x=new_protein_name, y=new_protein_name_grad)
 # 4. Intersect the sets of contig names (composing protein group) to find most similar protein groups: 
 protein_name_grid$match_rate <- apply(protein_name_grid, 1,
       function(row) length(intersect(row$x, row$y)) / min(length(row$x), length(row$y)))
+
+protein_name_grid$match_rate <- apply(protein_name_grid, 1,
+      function(row) length(intersect(row$x, row$y)) / max(length(row$x), length(row$y)))
+
 sum(protein_name_grid$match_rate > 0) # so many pairs are similar of even identical
 
 # 5. Take only pairs with similarity > 0
-protein_name_grid_sub <- subset(protein_name_grid, match_rate > 0)
+#protein_name_grid_sub <- subset(protein_name_grid, match_rate > 0)
+protein_name_grid_sub <- subset(protein_name_grid, match_rate == 1) # if take only complete matches in protein group names
 protein_name_grid_sub$field_pg <- sapply(protein_name_grid_sub$x, paste0, collapse=';')
 protein_name_grid_sub$grad_pg <- sapply(protein_name_grid_sub$y, paste0, collapse=';')
 
@@ -111,14 +140,19 @@ sign_changed <- subset(protein_name_grid_sub_filtered, sign == "< 0.05 (both)")
 sign_changed <- subset(protein_name_grid_sub_filtered, 
                        abs(LFC_field) > 0.8 & pv_field < 0.05 | abs(LFC_grad) > 0.5 & pv_grad < 0.05)
 
-library(rstatix)
+sign_changed <- subset(protein_name_grid_sub_filtered, 
+  abs(LFC_field) > 0.8 & pv_field < 0.05 | abs(LFC_grad) > 0.5 & pv_grad < 0.05 |
+    sign == "< 0.05 (both)")
+
 cor_test_res <- cor.test(protein_name_grid_sub_filtered$LFC_field, 
                          protein_name_grid_sub_filtered$LFC_grad)
 ggplot(protein_name_grid_sub_filtered, aes(LFC_field, LFC_grad)) +
-  annotate(geom='text', x = -2.6, y = 1.6, hjust = 0, size = 5,
+  annotate(geom='text', x = -1.7, y = 1, hjust = 0, size = 5,
            label = paste0('r2 = ', round(cor_test_res$estimate, 4), '\n',
                           'p-value ', p_format(cor_test_res$p.value,
-                                               accuracy = 0.000000000000001))) +
+                                               #accuracy = 0.05
+                                               accuracy = cor_test_res$p.value * 10
+                                               ))) +
   geom_hline(yintercept = 0, color = '#387490', alpha = .7) +
   geom_vline(xintercept = 0, color = '#387490', alpha = .7) +
   geom_point(aes(shape = sign, color = sign, alpha = sign)) +
@@ -127,23 +161,38 @@ ggplot(protein_name_grid_sub_filtered, aes(LFC_field, LFC_grad)) +
                      values = c('firebrick1', 'olivedrab','olivedrab','grey50')) +
   scale_alpha_manual('p-value:', values = c(1, .8, .8, 0.3)) +
   geom_smooth(method = 'lm', color = 'cornflowerblue', fill = 'grey85', size = .6) +
-  geom_text_repel(aes(label = ifelse(grepl('uncharacterized|hypothetical|\\*',
-                                           common_name),
-                                     '', common_name)),
-                  data = sign_changed, 
-                  max.overlaps = Inf,
-                  segment.colour = 'grey50', box.padding = .4) +
+  #geom_text_repel(aes(label = ifelse(grepl('uncharacterized|predicted protein|hypothetical|\\*',
+  #                                         common_name),
+  #                                   '', common_name)),
+  #                data = sign_changed, 
+  #                max.overlaps = Inf,
+  #                segment.colour = 'grey50', box.padding = .6, size = 2.5) +
+
   #xlab('log2FC (December, 2.3 °C/September, 10.5 °C; 71 days) ') +
-  #xlab('log2FC (January, 0.3 °C/September, 10.5 °C; 118 days) ') +
+  xlab('log2FC (January, 0.3 °C/September, 10.5 °C; 118 days) ') +
   #xlab('log2FC (November, 6.4 °C/September, 10.5 °C; 38 days) ') +
-  xlab('log2FC (June, ~4-6 °C/September, 10.5 °C; 254 days) ') +
-  ylab('log2FC (Lab: 1.5 °C/10.5 °C; 24 days) ') +
+  #xlab('log2FC (June, ~4-6 °C/September, 10.5 °C; 254 days) ') +
+  #ylab('log2FC (Lab: 1.5 °C/10.5 °C; 24 days) ') +
+  
+  #ylab('log2FC (Lab: 1.5 °C/10.5 °C, all controls; 24 days) ') +
+  ylab('log2FC (Lab: 6 °C/10.5 °C, all controls; 12 days) ') +
+  #ylab('log2FC (Lab: 1.5 °C/10.5 °C, parallel control; 24 days) ') +
+  #ylab('log2FC (Lab: 6 °C/10.5 °C, parallel control; 12 days) ') +
+  
   theme_light()
 
 ggsave(file.path(dir, paste0('FieldGradComp_', species, '_', month1, '_', month2, 
-                             '.png')), 
+                             '_onlyCompletePGmatches.png')), 
        scale = 1.2, width = 7, height = 5.5)
 
+ggsave(file.path(dir_to_save_res, paste0('FieldGradComp_', species, '_', month1, '_', 
+                                         month2, 
+                             '_6vs10.5ALL',
+                             '_onlyCompletePGmatches.png')), 
+       scale = 1.2, width = 8, height = 5.5)
 
-
-
+ggsave(file.path(dir_to_save_res, paste0('FieldGradComp_', species, '_', month1, '_', 
+                                         month2, 
+                                         '_6vs10.5ALL',
+                                         '_onlyCompletePGmatches_woNames.png')), 
+       scale = 0.9, width = 7, height = 5.5)
