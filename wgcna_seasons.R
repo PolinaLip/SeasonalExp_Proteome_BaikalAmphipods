@@ -96,7 +96,11 @@ colnames(data_for_wgcna) <- meta$sample
 # 6. Prepare table with traits
 metadata <- meta
 row.names(metadata) <- metadata$sample
-metadata$temperature <- ifelse(grepl('September', metadata$condition), 10.5,
+metadata$temperature <- ifelse(grepl('September', metadata$condition), 10.5, # Eve
+                        ifelse(grepl('November', metadata$condition), 6.4,
+                        ifelse(grepl('December', metadata$condition), 2.3,
+                        ifelse(grepl('January', metadata$condition), 0.3, 7))))
+metadata$temperature <- ifelse(grepl('September', metadata$condition), 12.5, # Ecy
                         ifelse(grepl('November', metadata$condition), 6.4,
                         ifelse(grepl('December', metadata$condition), 2.3,
                         ifelse(grepl('January', metadata$condition), 0.3, 7))))
@@ -195,6 +199,7 @@ metadata <- metadata[-c(1, 2, 3, 4, 5)]
 # 7. Constructing the gene network and identifying modules: 
 sth_power <- 4 # soft-threshold power
 sth_power <- 7
+sth_power <- 5 # Gla
 net <- blockwiseModules(dat_wo_missing, power = sth_power,
                         TOMType = "signed", minModuleSize = 25,
                         reassignThreshold = 0, mergeCutHeight = 0.15,
@@ -266,11 +271,11 @@ correlation_heatmap <- function(dir=current_dir, plot_width=900, plot_height=900
 }
 
 correlation_heatmap(power=sth_power, MCH=0.15, MMS=25, ds=4, species = species,
-                    plot_width=1150, plot_height=900,
-                    nameOfexp = 'Seasons_short2')
+                    plot_width=1120, plot_height=800,
+                    nameOfexp = 'Seasons_short')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
-trait <- 'Jun'
+trait <- 'one'
 trait_data <- as.data.frame(metadata[trait]) # take the trait of interest
 names(trait_data) <- trait
 modNames <- substring(names(MEs), 3) # take module names without 'ME'-preposition

@@ -6,7 +6,7 @@ library(ggfortify)
 library(pheatmap)
 library(viridis)
 
-species <- 'Ecy'
+species <- 'Eve'
 population <- 'BK'
 #dir_to_results <- paste0('labeglo2/MS_results/Field/', species, '/', population)
 dir_to_results <- paste0('labeglo2/MS_results/Field/', species, '/', species, 
@@ -229,7 +229,7 @@ meta2$condition <- sub('_BK', '', meta2$condition)
 autoplot(pca_res, data=meta2, colour='condition', size = 3, shape='sex') + theme_light()
 autoplot(pca_res, data=meta2, colour='condition', size = 3, 
          #shape='sex', 
-         frame = F, 
+         frame = T, 
          x = 1,
          y = 2) + 
   theme_light() + 
@@ -333,10 +333,10 @@ edger_analysis_wrap <- function(norm_data, protein_annotation,
 # wo NAs
 sign_protein_info_sub_allcomb <- NULL
 
-#data_only_dec_and_sep <- data_irs[,subset(meta2, 
-#                                  grepl('September|June', condition))$sample]
-#data_wo_na <- na.omit(data_only_dec_and_sep)
-data_wo_na <- na.omit(data_irs)
+data_only_dec_and_sep <- data_irs[,subset(meta2, 
+                                  grepl('September|June', condition))$sample]
+data_wo_na <- na.omit(data_only_dec_and_sep)
+#data_wo_na <- na.omit(data_irs)
 SignProteinInfo_0 <- edger_analysis_wrap(norm_data = data_wo_na, 
                                          protein_annotation = pep_annot, 
                                          cond2compare = c("September", 
@@ -517,6 +517,93 @@ ggsave(file.path(dir_to_results, paste0('boxplots_', 'all_Hemocyanins_withSex','
 
 scaled_intensities_table <- as.data.frame(scaled_intensities)
 hist(scaled_intensities_table$`F/104/L/3C/3_1`)
+
+### Plot chosen proteins:
+
+proteins_to_plot <- 
+  subset(SignProteinInfo_0, 
+         grepl('GYG1|UGP|GBE|GYS2|sgg|agl1|glycogen|Hex-A|glycogenin|PGM2|Pgm', 
+               geneSymbol, ignore.case = T))
+proteins_to_plot <- 
+  subset(SignProteinInfo_0, 
+         grepl('GYG1|UGP|GBE|AGL', 
+               geneSymbol, ignore.case = T)) 
+scaled_intensities_sign_wo_pools <- 
+  scaled_intensities[,!grepl('pool', colnames(scaled_intensities))] # to look at all hemocyanins
+
+to_plot_1 <- 
+  scaled_intensities_sign_wo_pools[match(proteins_to_plot$protein, 
+                                         rownames(scaled_intensities_sign_wo_pools)),]
+to_plot_1 <- as.data.frame(to_plot_1)
+colnames(to_plot_1) <- colnames(scaled_intensities_sign_wo_pools)
+to_plot_1$annotation <- proteins_to_plot$geneSymbol
+to_plot_1$annotation <- sub('PREDICTED: |-like|, partial|isoform X1', '', to_plot_1$annotation)
+
+to_plot_1_long <- to_plot_1 %>%
+  rownames_to_column(var = 'proteins') %>%
+  pivot_longer(cols = starts_with('F'), names_to = 'sample',
+               values_to = 'intensities')
+
+to_plot_1_long$months <- meta2[match(to_plot_1_long$sample, meta2$sample),]$condition
+to_plot_1_long$time <-
+  ifelse(to_plot_1_long$months == 'September', 1,
+         ifelse(to_plot_1_long$months == 'November' , 2,
+                ifelse(to_plot_1_long$months == 'December', 3,
+                       ifelse(to_plot_1_long$months == 'January', 4, 5))))
+
+get_protein_label <- function(x) {
+  sapply(strsplit(as.character(x), '|', fixed=T), `[`, 2)
+}
+
+#to_plot_1_long$go_annotation <- pep_annot_go[match(to_plot_1_long$proteins, 
+#                                                   pep_annot_go$protein_group),]$go_annotation
+to_plot_1_long$annotation <- str_wrap(to_plot_1_long$annotation,
+                                      width = 23)
+to_plot_1_long$whole_label <- sprintf('%s|%s', to_plot_1_long$proteins,
+                                      to_plot_1_long$annotation)
+to_plot_1_long$whole_label2 <- 
+  factor(to_plot_1_long$whole_label,
+         levels=unique(
+           to_plot_1_long$whole_label[order(to_plot_1_long$annotation)]))
+
+months_mean <- aggregate(intensities ~ time, to_plot_1_long, mean)
+
+#to_plot_1_long <- subset(to_plot_1_long, intensities < 6) # if there are samples with intensity value more than 6
+to_plot_1_long$Sex <- meta[match(to_plot_1_long$sample, meta$sample),]$sex
+
+ggplot(to_plot_1_long, aes(time, intensities, group = time)) +
+  facet_wrap(~ whole_label2, ncol = 5,
+             labeller = as_labeller(get_protein_label)
+             , scales = 'free_y'
+  ) +
+  geom_boxplot(outlier.color = NA, 
+               #aes(color = time == 4, fill = time == 4), alpha = .3
+  ) +
+  geom_jitter(
+    #aes(color = time == 4), 
+    #aes(color = Sex),
+    size = 0.3) +
+  geom_line(data = months_mean, aes(time, intensities, group = 1), 
+            color = "firebrick1", alpha = 0.80, 
+            size = 1.2) +
+  scale_color_manual(values = c('black', 'dodgerblue4')) +
+  #scale_color_manual(values = c('deeppink1', 'dodgerblue1', 'grey35') # sex 
+  #) +
+  #  scale_fill_manual(values = c(NA, 'dodgerblue4')) + 
+  scale_x_continuous(breaks = c(1, 2, 3, 4, 5),
+                     labels = c('Sep', 'Nov', 'Dec', 'Jan', 'Jun')) +
+  guides(fill = F 
+         #, color = F
+  ) +
+  xlab('Months') +
+  ylab('Scaled intensities') +
+  theme_bw()
+
+ggsave(file.path(dir_to_results, paste0('boxplots_', 'all_Hemocyanins_withSex','.png')), 
+       scale = 0.7,
+       width = 14, height = 7)
+
+
 
 ### tmp
 

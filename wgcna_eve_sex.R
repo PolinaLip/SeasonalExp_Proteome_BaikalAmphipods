@@ -108,8 +108,8 @@ metadata$Nov <- ifelse(grepl('November', metadata$condition), 1, 0)
 metadata$Dec <- ifelse(grepl('December', metadata$condition), 1, 0)
 metadata$Jan <- ifelse(grepl('January', metadata$condition), 1, 0)
 
-metadata$male <- ifelse(metadata$sex2 == 'male', 1, 0)
 metadata$female <- ifelse(metadata$sex2 == 'female', 1, 0)
+metadata$male <- ifelse(metadata$sex2 == 'male', 1, 0)
 
 metadata$Sep_f <- 
   ifelse(grepl('September', metadata$condition) & metadata$sex2 == 'female', 1, 0)
@@ -206,7 +206,7 @@ correlation_heatmap <- function(dir=current_dir, plot_width=900, plot_height=900
 
 correlation_heatmap(power=sth_power, MCH=0.15, MMS=25, ds=4, species = species,
                     plot_width=2000, plot_height=800,
-                    nameOfexp = 'SeasonsWithKnownSex_MonthSex')
+                    nameOfexp = 'SeasonsWithKnownSex_MonthSex2')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
 trait <- 'Sep_m'

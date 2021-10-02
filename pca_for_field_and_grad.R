@@ -9,7 +9,7 @@ library(rstatix)
 
 dir_to_save_results <- 'labeglo2/MS_results/Field_Grad_Comparison/'
 
-species <- 'Ecy'
+species <- 'Gla'
 meta_upload <- function(path_to_file, species_name) {
   meta <- read.csv(file = path_to_file, sep = '\t')
   meta$measure <- sub('intensity', 'intensity corrected', meta$measure)
@@ -144,7 +144,7 @@ autoplot(pca_res, data=meta_joined, colour='condition', size = 3,
          y = 3) + 
   theme_light() + 
   scale_color_manual('Condition', 
-                     values = palette.colors(n=10, 'Dark2'))
+                     values = palette.colors(n=8, 'Dark2'))
 
 # autoplot(pca_res, data=meta2, colour='condition', label = TRUE, label.size = 5) + theme_light()
 # meta2[rownames(meta2) == 44,]$sample
@@ -158,12 +158,12 @@ ggsave(filename = file.path(dir_to_results, paste0('pca_',
 ### To plot correlations between different months and conditions from gradual decrease temperature
 
 data_joined_long <- pivot_longer(data_joined %>% rownames_to_column('PG'), 
-                            starts_with(c('F','E')), names_to = 'Samples',
+                            starts_with(c('F','E', 'G')), names_to = 'Samples',
                             values_to = 'intensities')
 
 data_joined_long$condition <- 
   meta_joined[match(data_joined_long$Samples, meta_joined$sample),]$condition
-data_joined_long$condition <- sub('_BK|EveBK_|Ecy_', '', data_joined_long$condition)
+data_joined_long$condition <- sub('_BK|EveBK_|Ecy_|Gla_', '', data_joined_long$condition)
 
 data_joined_mean <- aggregate(intensities ~ PG + condition, 
                               data = data_joined_long, median, na.rm = T)
@@ -172,23 +172,25 @@ data_joined_mean_wide <- pivot_wider(data_joined_mean, names_from = condition,
                                      values_from = intensities)
 colnames(data_joined_mean_wide)
 
-cond1 <- "1.5"
-cond2 <- "10.5"
+cond1 <- "10.5"
+cond2 <- "June"
 
 cor_test_res <- 
   cor.test(c(data_joined_mean_wide[,cond1][[1]]), 
            c(data_joined_mean_wide[,cond2][[1]]))
   
-ggplot(data_joined_mean_wide, aes(`6`, `10.5`)) +
+ggplot(data_joined_mean_wide, aes(`10.5`, `June`)) +
   geom_point(alpha=.7, color='gray70') +
   geom_smooth(method='lm') +
   annotate(geom='text', size = 3,
-           x = 1, y = 1.2, hjust = 0,
+           x = 1.1, y = 2.1, hjust = 0,
            label = paste0('r2 = ', round(cor_test_res$estimate, 4), '\n',
-                          'p-value ', p_format(cor_test_res$p.value,
-                                               #accuracy = 0.05
-                                               accuracy = cor_test_res$p.value * 10
+                          'p-value = ', p_format(cor_test_res$p.value,
+                                               accuracy = 0.005
+                                               #accuracy = cor_test_res$p.value * 10
                                                ))) +
+  scale_x_continuous(limits = c(-2.3, 2)) +
+  scale_y_continuous(limits = c(-1.5, 2.3)) +
   theme_light()
 
 ggsave(file.path(dir_to_save_results, 
