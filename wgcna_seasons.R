@@ -25,7 +25,7 @@ dir_annot <- paste0('labeglo2/MS_results/Field/', species,
 dir_metafile <- paste0('labeglo2/MS_results/Field/', species, 
                        '/', species,'_refchannels_all/')
 current_dir <- paste0('labeglo2/MS_results/Field/', species, 
-                      '/', species,'_refchannels_all/')
+                      '/', species,'_refchannels_all/withALLzeros_inAtLeastOneCond/')
 pg_annot_complete <- read.csv(file.path(dir_annot, 
                               paste0('annot_proteinGroups_field_', tolower(species), 
                                      '_withGOannotation.csv')), 
@@ -37,8 +37,20 @@ data_for_wgcna <- read.csv(file.path(current_dir,
                                      paste0('intensities_after_slNorm_woNA_', 
                                             tolower(species),'.csv')),
                            header = T, sep = '\t')
+# if to take into analysis data with missing values (zeros)
+data_for_wgcna <- read.csv(file.path(current_dir, 
+                                     paste0('intensities_after_slNorm_withNA', 
+                                            tolower(species),'.csv')),
+                           header = T, sep = '\t') 
+
 data_for_wgcna <- data_for_wgcna[, !grepl('pool', colnames(data_for_wgcna),
                                           ignore.case = T)]
+
+### If you work with data with missing values: ####
+
+#data_for_wgcna[is.na(data_for_wgcna)] <- 0
+rownames(data_for_wgcna) <- data_for_wgcna[,1]
+data_for_wgcna <- data_for_wgcna[-1]
 
 # 3. Data preprocessing - get rid of missing data 
 data_transp <- as.data.frame(t(data_for_wgcna))
@@ -197,14 +209,16 @@ metadata <- metadata[-c(1, 2, 3, 4, 5, 6)] # Eve, Gla
 metadata <- metadata[-c(1, 2, 3, 4, 5)]
 
 # 7. Constructing the gene network and identifying modules: 
-sth_power <- 4 # soft-threshold power
+sth_power <- 4 # soft-threshold power, Eve
 sth_power <- 7
 sth_power <- 5 # Gla
 net <- blockwiseModules(dat_wo_missing, power = sth_power,
-                        TOMType = "signed", minModuleSize = 25,
-                        reassignThreshold = 0, mergeCutHeight = 0.15,
+                        TOMType = "signed", 
+                        minModuleSize = 25, # 25
+                        reassignThreshold = 0, 
+                        mergeCutHeight = 0.15, # 0.15
                         maxBlockSize = 12000,
-                        deepSplit = 4, 
+                        deepSplit = 4,  # 4
                         numericLabels = TRUE,
                         pamRespectsDendro = FALSE,
                         saveTOMs = TRUE,
@@ -270,9 +284,9 @@ correlation_heatmap <- function(dir=current_dir, plot_width=900, plot_height=900
   dev.off()
 }
 
-correlation_heatmap(power=sth_power, MCH=0.15, MMS=25, ds=4, species = species,
+correlation_heatmap(power=sth_power, MCH=0.25, MMS=30, ds=2, species = species,
                     plot_width=1120, plot_height=800,
-                    nameOfexp = 'Seasons_short')
+                    nameOfexp = 'Seasons_short_withNAinCond2')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
 trait <- 'one'

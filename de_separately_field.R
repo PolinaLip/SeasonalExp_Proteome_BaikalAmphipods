@@ -95,6 +95,8 @@ remove_completeNAs_inCond <- function(data2clean, metafile){
 }
 data_raw <- remove_completeNAs_inCond(dat, meta)
 
+# if use data without remove_completeNAs_inCond
+data_raw <- dat
 ### 5. Visualize the raw data
 boxplot(log2(data_raw), 
         notch = TRUE, main = 'RAW data',
@@ -126,7 +128,7 @@ target <- mean(c(colSums(exp1_raw, na.rm = T), colSums(exp2_raw, na.rm = T),
                  colSums(exp11_raw, na.rm = T) 
                  #,colSums(exp12_raw, na.rm = T)
                  ),
-               na.rm = T)
+               na.rm = T) # Eve, BK
 target <- mean(c(colSums(exp1_raw, na.rm = T), colSums(exp2_raw, na.rm = T), 
                    colSums(exp3_raw, na.rm = T), colSums(exp4_raw, na.rm = T),
                    colSums(exp5_raw, na.rm = T), colSums(exp6_raw, na.rm = T),
@@ -169,7 +171,7 @@ data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl, exp5_sl,
                  exp6_sl, exp7_sl, exp8_sl, exp9_sl, exp10_sl,
                  exp11_sl
                  #, exp12_sl
-                 )
+                 ) # Eve, BK
 data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl, exp5_sl,
                  exp6_sl, exp7_sl) # Ecy
 data_sl <- cbind(exp1_sl, exp2_sl, exp3_sl, exp4_sl, exp5_sl) # Gla
