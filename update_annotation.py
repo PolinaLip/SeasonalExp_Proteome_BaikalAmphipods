@@ -21,14 +21,15 @@ def main():
     
     args = parser.parse_args()
     outp = args.output
-    outp.write('protein_group\teggnog_annot\tdiamond_annot\tannotation\teggnog_proteins_annot\tdiamond_proteins_annot\tgo_annotation\tupd_full_annot\n')
+    outp.write('protein_group\teggnog_annot\tdiamond_annot\tannotation\teggnog_proteins_annot\tdiamond_proteins_annot\t'
+            'organism_eggnog\torganism_diamond\tgo_annotation\tupd_full_annot\n')
     
     diamond_proteinNames = make_dict_diamond_proteinNames(args.d)
     #print(diamond_proteinNames) 
     annot_file = args.a
     next(annot_file)
     for protein_group in annot_file:
-        protein_group = protein_group.strip()
+        protein_group = protein_group.strip('\n')
         annotations = protein_group.split('\t')
         if annotations[1] == '*' and annotations[2] not in diamond_proteinNames and annotations[2] != '*':
             print(annotations[2])

@@ -225,7 +225,7 @@ pca_res <- prcomp(data_sl_t)
 meta2 <- meta
 meta2$experiment <- as.factor(meta2$experiment)
 meta2$condition <- sub('_BK', '', meta2$condition)
-#meta2 <- subset(meta2, sex != 'NA') # only for the figure with samples with known sex
+meta2 <- subset(meta2, sex != 'NA') # only for the figure with samples with known sex
 #data_sl_t <- data_sl_t[meta2$sample,] # only for the figure with samples with known sex 
 #meta2 <- subset(meta2, !grepl('pool', sample)) # to draw wo pools
 autoplot(pca_res, data=meta2, colour='condition', size = 3, shape='sex') + theme_light()
@@ -370,6 +370,7 @@ save(protein_changed_unique, file = paste0(dir_to_results,
 
 # Prepare intensities data: scale the data -> transport it back 
 intensities <- data_wo_na
+intensities <- data_irs
 scaled_intensities <- apply(intensities, 1, scale)
 scaled_intensities <- t(scaled_intensities)
 colnames(scaled_intensities) <- meta$sample

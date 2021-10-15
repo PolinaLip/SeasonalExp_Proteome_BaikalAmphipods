@@ -8,10 +8,11 @@ scaled_intensities_long <- scaled_intensities %>%
                values_to = 'intensities')
 
 scaled_intensities_long$annotation <- 
-  pep_annot_go[match(scaled_intensities_long$proteins, 
-                     pep_annot_go$protein_group),]$annotation
+  pg_annot_complete[match(scaled_intensities_long$proteins, 
+                     pg_annot_complete$protein_group),]$upd_full_annot
 
 vg_only <- subset(scaled_intensities_long, annotation == 'Vg')
+#vg_only <- subset(intensity_long, annotation == 'Vg')
 
 vg_only$Month <- meta[match(vg_only$sample, meta$sample),]$condition
 vg_only$Month <- sub('_BK', '', vg_only$Month)
@@ -26,6 +27,8 @@ get_protein_label <- function(x) {
 
 vg_only$whole_label <- sprintf('%s|%s', vg_only$proteins,
                                         vg_only$annotation)
+vg_only$whole_label <- sprintf('%s|%s', vg_only$proteins,
+                               vg_only$annotation)
 vg_only$whole_label2 <- 
   factor(vg_only$whole_label,
          levels=unique(
@@ -61,16 +64,19 @@ ggplot(vg_only, aes(time, intensities, group = time)) +
   ylab('Scaled intensities') +
   theme_bw()
 
-unique(vg_only$proteins)[c(3, 5, 6)]
+unique(vg_only$protein)[c(3, 5, 6)]
 
 vg_to_plot <- subset(vg_only, 
-                     proteins == unique(vg_only$proteins)[3] | 
-                       proteins == unique(vg_only$proteins)[5] | 
-                       proteins == unique(vg_only$proteins)[6])
+                     proteins == unique(vg_only$proteins)[4] | 
+                       proteins == unique(vg_only$proteins)[7] | 
+                       proteins == unique(vg_only$proteins)[9])
+
+
 
 ggplot(vg_to_plot, aes(time, intensities, group = time)) +
-  facet_wrap(~ whole_label2, ncol = 4,
-             labeller = as_labeller(get_protein_label)
+  facet_wrap(~ whole_label2, ncol = 4
+             #,
+             #labeller = as_labeller(get_protein_label)
              , scales = 'free_y'
   ) +
   geom_boxplot(outlier.color = NA, 
@@ -103,6 +109,9 @@ choosen_month <- 'December'
 data_sl_t_vg <- data_sl_t[,colnames(data_sl_t) == unique(vg_only$proteins)[3] | 
                             colnames(data_sl_t) == unique(vg_only$proteins)[5] | 
                             colnames(data_sl_t) == unique(vg_only$proteins)[6]]
+data_sl_t_vg <- data_sl_t[,colnames(data_sl_t) == unique(vg_only$proteins)[4] | 
+                            colnames(data_sl_t) == unique(vg_only$proteins)[7] | 
+                            colnames(data_sl_t) == unique(vg_only$proteins)[9]]
 data_sl_t_vg <- data_sl_t_vg[!grepl('pool', rownames(data_sl_t_vg)),]
 data_sl_t_vg <- data_sl_t_vg[match(meta[grepl(choosen_month, meta$condition),]$sample,
                                    rownames(data_sl_t_vg)),]
@@ -113,7 +122,7 @@ meta_vg <- subset(meta2, grepl(choosen_month, condition))
 autoplot(pca_res, data=meta_vg, colour='condition', size = 3, shape='sex') + theme_light()
 
 res <- pca_res$x
-#res <- as_tibble(res)
+res <- as.data.frame(res)
 meta_dec <- subset(meta, grepl('December', condition))
 meta_dec$sex_prediction <- ifelse(res[meta_dec$sample,]$PC1 < 0.1, 
                                   'female', 'male')

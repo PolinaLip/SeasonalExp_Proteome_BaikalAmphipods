@@ -30,12 +30,16 @@ current_dir <- paste0('labeglo2/MS_results/Field/', species,
                       '/', species,'_refchannels_all/withALLzeros_inAtLeastOneCond/')
 pg_annot_complete <- read.csv(file.path(dir_annot, 
                                         paste0('annot_proteinGroups_field_', tolower(species), 
-                                               '_withGOannotation_with_organisms.csv')), 
+                                               '_withGOannotation.csv')), 
                               sep = '\t', header = T) # eggnog and diamond annotation
-metafile <- 'metadata_predictedSex.csv'
+pg_annot_complete <- read.csv(file.path(dir_annot, 
+                                        paste0('annot_proteinGroups_field_', tolower(species), 
+                                               '_withGOannotation_with_organisms.csv')), 
+                              sep = '\t', header = T)
+metafile <- 'Metadata_Proteus.tsv'
 
 # 2. Upload normalized intensities
-data_for_wgcna <- read.csv(file.path(current_dir, 
+data_for_wgcna <- read.csv(file.path(dir_to_intensities, 
                                      paste0('intensities_after_slNorm_woNA_', 
                                             tolower(species),'.csv')),
                            header = T, sep = '\t')
@@ -57,16 +61,13 @@ data_for_wgcna <- data_for_wgcna[-1]
 # 3. Upload metadata
 meta_complete <- read.delim(file.path(dir_metafile, metafile), header=TRUE, sep="\t")
 meta <- meta_complete
+population <- 'BK'
 meta <- subset(meta, condition != 'pool')
-colnames(data_for_wgcna) <- meta$sample
-meta <- subset(meta, sex2 != 'NA')
+meta[which(meta$sex == ''),]$sex <- NA
+meta <- meta[grepl(population, meta$sample),]
+meta <- subset(meta, sample != 'F/100/BK/3c/2m_2')
 
-### choose sex if you want to analyse only one sex
-meta <- subset(meta, sex2 == 'male')
-meta <- subset(meta, sex2 == 'female')
-###
-data_for_wgcna <- 
-  data_for_wgcna[,colnames(data_for_wgcna) %in% meta$sample]
+colnames(data_for_wgcna) <- meta$sample
 
 # 4. Choose only proteins with at least 5 not NA samples in each condition
 remove_prot_with_someNA_inCond <- function(data2clean, metafile, notNAnumber = 5){
@@ -86,13 +87,14 @@ data_for_wgcna_ <- remove_prot_with_someNA_inCond(data_for_wgcna, meta)
 col_indx <- match(colnames(data_for_wgcna), colnames(data_for_wgcna_))
 data_for_wgcna <- data_for_wgcna_[col_indx] # to return the order of columns
 
-# 4. Data preprocessing - get rid of missing data 
+# 5. Data preprocessing - get rid of missing data 
 data_transp <- as.data.frame(t(data_for_wgcna))
 gsp <- goodSamplesGenes(data_transp, verbose = 1)
 gsp$allOK
 
 if (!gsp$allOK) {
   dat_wo_missing <- data_transp[gsp$goodSamples, gsp$goodGenes]
+  printFlush(paste("Removing genes:", paste(names(data_transp)[!gsp$goodGenes], collapse = ", ")))
 } else {
   dat_wo_missing <- data_transp
 }
@@ -103,7 +105,7 @@ par(mar = c(0,4,2,0))
 plot(sampleTree, main = "Sample clustering to detect outliers", sub="", xlab="", cex.lab = 1.5,
      cex.axis = 1.5, cex.main = 2)
 
-# 5. Choosing the soft-thresholding power: analysis of network topology
+# 6. Choosing the soft-thresholding power: analysis of network topology
 soft_threshold <- function(data_wo_miss){
   powers = c(c(1:10), seq(from = 12, to=30, by=2))
   sft = pickSoftThreshold(data_wo_miss, powerVector = powers, verbose = 5)
@@ -125,57 +127,53 @@ soft_threshold <- function(data_wo_miss){
 }
 soft_threshold(dat_wo_missing)
 
-# 6. Prepare table with traits
+# Choose the power, which is the lowest power, for which the scale-free topology fit
+# From the wgcna manual: index curve flattens out upon reaching a high value 
+
+# 7. Prepare table with traits
 metadata <- meta
 row.names(metadata) <- metadata$sample
-metadata$temperature <- ifelse(grepl('September', metadata$condition), 10.5,
+metadata$temperature <- ifelse(grepl('September', metadata$condition), 10.5, # Eve
                                ifelse(grepl('November', metadata$condition), 6.4,
                                       ifelse(grepl('December', metadata$condition), 2.3,
                                              ifelse(grepl('January', metadata$condition), 0.3, 7))))
+metadata$temperature <- ifelse(grepl('September', metadata$condition), 12.5, # Ecy
+                               ifelse(grepl('November', metadata$condition), 6.4,
+                                      ifelse(grepl('December', metadata$condition), 2.3,
+                                             ifelse(grepl('January', metadata$condition), 0.3, 7))))
+
+metadata$temperature <- ifelse(grepl('September', metadata$condition), 10.2,
+                               ifelse(grepl('November', metadata$condition), 2.1,
+                                      ifelse(grepl('December', metadata$condition), 0.3,
+                                             ifelse(grepl('January', metadata$condition), 0.7, 8)))) # Gla
 metadata$time <- ifelse(grepl('September', metadata$condition), 1,
                         ifelse(grepl('November', metadata$condition), 2,
                                ifelse(grepl('December', metadata$condition), 3,
                                       ifelse(grepl('January', metadata$condition), 4, 5))))
+
 metadata$Sep <- ifelse(grepl('September', metadata$condition), 1, 0)
 metadata$Nov <- ifelse(grepl('November', metadata$condition), 1, 0)
 metadata$Dec <- ifelse(grepl('December', metadata$condition), 1, 0)
 metadata$Jan <- ifelse(grepl('January', metadata$condition), 1, 0)
+metadata$Jun <- ifelse(grepl('June', metadata$condition), 1, 0)
 
-metadata$female <- ifelse(metadata$sex2 == 'female', 1, 0)
-metadata$male <- ifelse(metadata$sex2 == 'male', 1, 0)
+metadata <- metadata[-c(1, 2, 3, 4, 5, 6)] # Eve, Gla
+metadata <- metadata[-c(1, 2, 3, 4, 5)]
 
-metadata$Sep_f <- 
-  ifelse(grepl('September', metadata$condition) & metadata$sex2 == 'female', 1, 0)
-metadata$Sep_m <- 
-  ifelse(grepl('September', metadata$condition) & metadata$sex2 == 'male', 1, 0)
-metadata$Nov_f <- 
-  ifelse(grepl('November', metadata$condition) & metadata$sex2 == 'female', 1, 0)
-metadata$Nov_m <- 
-  ifelse(grepl('November', metadata$condition) & metadata$sex2 == 'male', 1, 0)
-metadata$Dec_f <- 
-  ifelse(grepl('December', metadata$condition) & metadata$sex2 == 'female', 1, 0)
-metadata$Dec_m <- 
-  ifelse(grepl('December', metadata$condition) & metadata$sex2 == 'male', 1, 0)
-metadata$Jan_f <- 
-  ifelse(grepl('January', metadata$condition) & metadata$sex2 == 'female', 1, 0)
-metadata$Jan_m <- 
-  ifelse(grepl('January', metadata$condition) & metadata$sex2 == 'male', 1, 0)
-
-metadata <- metadata[-c(1, 2, 3, 4, 5, 6, 7, 8)]
-# 7. Constructing the gene network and identifying modules: 
-sth_power <- 4 # soft-threshold power
-sth_power <- 6 # both sexes
-sth_power <- 5
-sth_power <- 5 # male
-sth_power <- 7 # female
+# 8. Constructing the gene network and identifying modules: 
+sth_power <- 4 # soft-threshold power, Eve
+sth_power <- 7
+sth_power <- 5 # Gla
 MMS <- 25
 MCH <- 0.15
 DS <- 4
 net <- blockwiseModules(dat_wo_missing, power = sth_power,
-                        TOMType = "signed", minModuleSize = MMS,
-                        reassignThreshold = 0, mergeCutHeight = MCH,
+                        TOMType = "signed", 
+                        minModuleSize = MMS, # 25
+                        reassignThreshold = 0, 
+                        mergeCutHeight = MCH, # 0.15
                         maxBlockSize = 12000,
-                        deepSplit = DS, 
+                        deepSplit = DS,  # 4
                         numericLabels = TRUE,
                         pamRespectsDendro = FALSE,
                         saveTOMs = TRUE,
@@ -241,12 +239,12 @@ correlation_heatmap <- function(dir=current_dir, plot_width=900, plot_height=900
   dev.off()
 }
 
-correlation_heatmap(power=sth_power, MCH=0.15, MMS=25, ds=4, species = species,
-                    plot_width=2000, plot_height=800,
-                    nameOfexp = 'SeasonsWithKnownSex_MonthSex')
+correlation_heatmap(power=sth_power, MCH=MCH, MMS=MMS, ds=DS, species = species,
+                    plot_width=1120, plot_height=800,
+                    nameOfexp = 'Seasons_short_withATLEAST5notNAinCond_tmp')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
-trait <- 'Sep_m'
+trait <- 'temperature'
 trait_data <- as.data.frame(metadata[trait]) # take the trait of interest
 names(trait_data) <- trait
 modNames <- substring(names(MEs), 3) # take module names without 'ME'-preposition
@@ -293,8 +291,8 @@ proteinInfo_final <- proteinInfo[proteinOrder,]
 
 ### Draw all hub genes on the plot
 
-GS_treshold <- 0.6
-MM_treshold <- 0.6
+GS_treshold <- 0.5
+MM_treshold <- 0
 proteinInfo_final_hub <- proteinInfo_final[abs(proteinInfo_final[sprintf('GS.%s', 
                                                                          trait)]) 
                                            > GS_treshold,]
@@ -302,7 +300,7 @@ proteinInfo_final_hub <- proteinInfo_final[abs(proteinInfo_final[sprintf('GS.%s'
 hubsMM <- NULL
 for (protein in 1:nrow(proteinInfo_final_hub)){
   temp <- proteinInfo_final_hub[sprintf(c('MM.%s', 'p.MM.%s'), 
-                                        as.character(proteinInfo_final_hub[protein,][3]))][protein,]
+          as.character(proteinInfo_final_hub[protein,][3]))][protein,]
   colnames(temp) <- c('MM', 'pMM')
   hubsMM <- rbind(hubsMM, temp)
 }
@@ -345,7 +343,7 @@ ggplot(proteinInfo_hub_reduced,
 ggsave(file.path(current_dir, paste0('hub_proteins_', trait, '_GS',
                                      GS_treshold, '.png')), scale = 1.7)
 
-##################### Prepare long table #########################################
+##############################################################
 intensity_scaled <- apply(data_for_wgcna, 1, scale)
 intensity_scaled <- t(intensity_scaled)
 intensity_scaled <- data.frame(intensity_scaled)
@@ -358,8 +356,13 @@ intensity_long <- intensity_scaled %>%
 pr_id <- match(intensity_long$protein, proteinInfo_final$protein)
 intensity_long$module <- proteinInfo_final[pr_id,]$moduleColor
 intensity_long$annotation <- proteinInfo_final[pr_id,]$geneSymbol
+intensity_long$GS <- proteinInfo_final[pr_id,][,paste0('GS.', trait)]
 
-##### GO enrichment #############################################################
+intensity_long_sub <- intensity_long
+intensity_long_sub$condition <- 
+  meta[match(intensity_long_sub$sample, meta$sample),]$condition
+
+##### GO enrichment ####
 library(topGO)
 library(readr)
 # upload go annotation file
@@ -381,8 +384,8 @@ gene_go_bonus$up_gene_name <- toupper(gene_go_bonus$gene_name)
 gene_go_bonus_ <- gene_go_bonus$go_term
 names(gene_go_bonus_) <- gene_go_bonus$up_gene_name
 
-#####
-module <- 'brown'
+#
+module <- 'magenta'
 intensity_long$MM <- proteinInfo_final[pr_id, paste0('MM.', module)]
 
 intensity_long$pMM <- proteinInfo_final[pr_id, paste0('p.MM.', module)]
@@ -395,13 +398,20 @@ intensity_long$go_annotation <-
 intensity_long$upd_full_annotation <- 
   pg_annot_complete[match(intensity_long$protein, 
                           pg_annot_complete$protein_group),]$upd_full_annot
+
 # create the dataframe with proteins and information to them:
 unique_proteins <- group_by(intensity_long, protein) %>% 
   slice_head() %>%
   ungroup()
+
 unique_proteins <- subset(unique_proteins, !is.na(module))
 # take wanted statistics 
 proteins_list <- unique_proteins$MM
+
+proteins_list <- unique_proteins$pMM
+proteins_list <- unique_proteins$pGS
+proteins_list <- unique_proteins$GS
+
 # name vector with statistics by the corresponed protein:
 names(proteins_list) <- toupper(unique_proteins$go_annotation)
 proteins_list2 <- proteins_list[names(proteins_list) != '*'] # avoid not annotated proteins
@@ -419,14 +429,14 @@ gene_go_all_ <- c(gene_go_, gene_go_from_bonus)
 proteins_list4 <- proteins_list2[names(proteins_list2) %in% names(gene_go_all_)]
 
 # run topgo
-threshold <- 0.8
+threshold <- 0.7
 ontology <- 'BP'
 GOdata <- new("topGOdata", description = "Simple session", 
               ontology = ontology,
               allGenes = proteins_list4, 
               #geneSel = function(x) x < 0.01, # pMM, pGS
               #geneSel = function(x) abs(x) > threshold, # MM, GS
-              geneSel = function(x) x > threshold, # MM
+              geneSel = function(x) x > threshold,
               nodeSize = 8,
               annot = annFUN.gene2GO, 
               gene2GO = gene_go_all_)
@@ -458,159 +468,87 @@ for (row in 1:nrow(allRes)) {
 
 write.table(go_table_w_genes, 
             file = file.path(current_dir, 
-                             paste0('topgo_ONLYpredSEX_', module, 
+                             paste0('topgoResults_', module, 
                                     'Module_', threshold, 
                                     '_ontology', ontology,'.csv')), row.names = F)
 
 ### Plot significant proteins from chosen GO terms (boxplots) 
 
-intensity_long$annot_long <- 
-  pg_annot_complete[match(intensity_long$protein,
+intensity_long_sub$go_annotation <- 
+  intensity_long[match(intensity_long_sub$protein, 
+                       intensity_long$protein),]$go_annotation
+intensity_long_sub$annot_long <- 
+  pg_annot_complete[match(intensity_long_sub$protein,
                           pg_annot_complete$protein_group),]$diamond_annot
 
 get_protein_label <- function(x) {
   sapply(strsplit(as.character(x), '|', fixed=T), `[`, 2)
 }
 
-intensity_long$whole_label <- sprintf('%s|%s', intensity_long$protein,
-                                          intensity_long$go_annotation)
-intensity_long$whole_label2 <- factor(intensity_long$whole_label,
+intensity_long_sub$whole_label <- sprintf('%s|%s', intensity_long_sub$protein,
+                                          intensity_long_sub$go_annotation)
+intensity_long_sub$whole_label2 <- factor(intensity_long_sub$whole_label,
                                           levels=unique(
-                                            intensity_long$whole_label[order(intensity_long$go_annotation)]))
+                                            intensity_long_sub$whole_label[order(intensity_long_sub$go_annotation)]))
+intensity_long_sub$MM <- intensity_long[match(intensity_long_sub$protein, 
+                                              intensity_long$protein),]$MM
 
-GO2draw <- 'GO:0006165'
+GO2draw <- 'GO:0035556'
 wanted <- proteins_list4[names(proteins_list4) %in% allGO[[GO2draw]]] 
 proteints2plot <- wanted[abs(wanted) > threshold]
-intensity_long_toplot <- subset(intensity_long, MM %in% proteints2plot)
+intensity_long_sub_toplot <- subset(intensity_long_sub, MM %in% proteints2plot)
 
-intensity_long_toplot$month <- meta[match(intensity_long_toplot$sample,
+intensity_long_sub_toplot$month <- meta[match(intensity_long_sub_toplot$sample,
                                               meta$sample),]$condition
 
-intensity_long_toplot$month <- sub('_BK', '', intensity_long_toplot$month)
+intensity_long_sub_toplot$month <- sub('_BK', '', intensity_long_sub_toplot$month)
 
-intensity_long_toplot$time <- ifelse(intensity_long_toplot$month == 'September', 1,
-                                         ifelse(intensity_long_toplot$month == 'November' , 2,
-                                                ifelse(intensity_long_toplot$month == 'December', 3,
-                                                       ifelse(intensity_long_toplot$month == 'January', 4, 5))))
-intensity_long_toplot$sex <- meta[match(intensity_long_toplot$sample, 
-                                        meta$sample),]$sex2
+intensity_long_sub_toplot$time <- ifelse(intensity_long_sub_toplot$month == 'September', 1,
+                                         ifelse(intensity_long_sub_toplot$month == 'November' , 2,
+                                                ifelse(intensity_long_sub_toplot$month == 'December', 3,
+                                                       ifelse(intensity_long_sub_toplot$month == 'January', 4, 5))))
 
-intensity_long_toplot_f <- subset(intensity_long_toplot, sex == 'female')
-intensity_long_toplot_m <- subset(intensity_long_toplot, sex == 'male')
-months_mean_female <- aggregate(intensity ~ month, intensity_long_toplot_f, mean)
-months_mean_male <- aggregate(intensity ~ month, intensity_long_toplot_m, mean)
-months_mean_female$time <- ifelse(months_mean_female$month == 'September', 1,
-                           ifelse(months_mean_female$month == 'November', 2,
-                           ifelse(months_mean_female$month == 'December', 3,
-                           ifelse(months_mean_female$month == 'January', 4, 5))))
-months_mean_male$time <- ifelse(months_mean_male$month == 'September', 1,
-                           ifelse(months_mean_male$month == 'November', 2,
-                           ifelse(months_mean_male$month == 'December', 3,
-                           ifelse(months_mean_male$month == 'January', 4, 5))))
+months_mean <- aggregate(intensity ~ month, intensity_long_sub_toplot, mean)
+#months_mean$condition <- sub('_BK', '', months_mean$condition)
+months_mean$time <- ifelse(months_mean$month == 'September', 1,
+                           ifelse(months_mean$month == 'November', 2,
+                                  ifelse(months_mean$month == 'December', 3,
+                                         ifelse(months_mean$month == 'January', 4, 5))))
 
-#intensity_long_toplot <- subset(intensity_long_toplot, intensity < 4) 
+#intensity_long_sub_toplot <- subset(intensity_long_sub_toplot, intensity < 4) 
 
-intensity_long_toplot$sex <- meta[match(intensity_long_toplot$sample,
-                                            meta$sample),]$sex2
+intensity_long_sub_toplot$sex <- meta[match(intensity_long_sub_toplot$sample,
+                                            meta$sample),]$sex
 
-(ggplot(intensity_long_toplot, aes(factor(time), intensity)) +
+ggplot(intensity_long_sub_toplot, aes(time, intensity, group = time)) +
   facet_wrap(~ whole_label2, ncol = 4,
-             labeller = as_labeller(get_protein_label), scales = 'free_y') +
-  geom_boxplot(outlier.color = NA, aes(color = sex)) +
-  geom_jitter(size = 0.3,
-              aes(color = sex), # sex
-              position=position_jitterdodge(jitter.width = 0.3)) +
-  geom_line(data = months_mean_female, aes(time, intensity, group = 1), 
-            color = "deeppink1", alpha = 0.40, 
+             labeller = as_labeller(get_protein_label)
+  ) +
+  #, scales = 'free_y') +
+  geom_boxplot(outlier.color = NA) +
+  geom_jitter(size = 0.3
+              #, aes(color = sex) # sex
+  ) +
+  geom_line(data = months_mean, aes(time, intensity, group = 1), 
+            color = "firebrick1", alpha = 0.80, 
             size = 1.2) +
-  geom_line(data = months_mean_male, aes(time, intensity, group = 1), 
-            color = "dodgerblue1", alpha = 0.40, 
-            size = 1.2) +
-  scale_x_discrete(breaks = c(1, 2, 3, 4, 5),
-                   labels = c('Sep', 'Nov', 'Dec', 'Jan', 'Jun')) +
-  scale_color_manual('Sex', values = c('deeppink1', 'dodgerblue1'), # sex 
-                       na.value = 'grey35') + # sex
-#  guides(fill = F
-#         , color = F) + # sex
-  #) +
+  scale_x_continuous(breaks = c(1, 2, 3, 4, 5),
+                     labels = c('Sep', 'Nov', 'Dec', 'Jan', 'Jun')) +
+  #  scale_color_manual('Sex', values = c('deeppink1', 'dodgerblue1'), # sex 
+  #                     na.value = 'grey35') + # sex
+  guides(fill = F
+         #, color = F) + # sex
+  ) +
   xlab('Months') +
   ylab('Scaled intensities') +
   theme_bw() +
   theme(axis.title.x = element_text(size = 13),
-        axis.title.y = element_text(size = 13),
-        legend.position = 'bottom',
-        legend.margin = margin(-10, 0, 0, 0)))
+        axis.title.y = element_text(size = 13))
 
-ggsave(file.path(current_dir, paste0('boxplots_ONLYpredSEX', module, 
+ggsave(file.path(current_dir, paste0('boxplots_', module, 
                                      'Module_MM', threshold,
                                      '_ontology', ontology, '_',  GO2draw,'.png')), 
        scale = 0.8,
-       width = 9, height = 5)
-
-#############################################################################
-intensity_long$GS <- proteinInfo_final[pr_id,]$GS.Sep_m
-intensity_long$time <- metadata[match(intensity_long$sample, 
-                                      rownames(metadata)),]$time
-intensity_long$Sex <- meta[match(intensity_long$sample, 
-                                 meta$sample),]$sex2
-
-th <- 0.5
-intensity_long_gs_sub <- subset(intensity_long, GS > th)
-#intensity_long_gs_sub <- 
-#  intensity_long_gs_sub[toupper(intensity_long_gs_sub$go_annotation) %in% names(gene_go_all_),]
-intensity_long_gs_sub <- to_plot
-get_protein_label <- function(x) {
-  sapply(strsplit(as.character(x), '|', fixed=T), `[`, 2)
-}
-intensity_long_gs_sub$annotation <- 
-  sub('PREDICTED: |LOW QUALITY PROTEIN: |-like|, partial| isoform X\\d+', '', 
-      intensity_long_gs_sub$annotation)
-intensity_long_gs_sub$annotationWrap <- sapply(
-  intensity_long_gs_sub$annotation, function(x)
-    paste(strwrap(x, width=26), collapse='\n'))
-
-intensity_long_gs_sub$whole_label <- sprintf('%s|%s', intensity_long_gs_sub$protein,
-                                             intensity_long_gs_sub$annotationWrap)
-intensity_long_gs_sub$whole_label2 <- 
-  factor(intensity_long_gs_sub$whole_label,
-    levels=unique(
-    intensity_long_gs_sub$whole_label[order(intensity_long_gs_sub$annotationWrap)]))
-#lm_res <- lm(intensity ~ time, intensity_long_gs_sub)
-#lm_res <- lm(intensity ~ daylight, intensity_long_gs_sub)
-# time
-ggplot(intensity_long_gs_sub, aes(factor(time), intensity)) +
-  facet_wrap(~ whole_label2, ncol = 4,
-             labeller = as_labeller(get_protein_label),
-             scales = 'free_y') +
-  geom_boxplot(outlier.color = NA, 
-               aes(color = Sex)
-               #aes(color = time == 4, fill = time == 4), alpha = .3
-  ) +
-  geom_jitter(
-    aes(color = Sex), position = position_jitterdodge(jitter.width = 0.3),
-    size = 0.3) +
-#  geom_abline(intercept = lm_res$coefficients[1], slope = lm_res$coefficients[2],
-#              color = 'firebrick') +
-  scale_color_manual('Sex', values = c('deeppink1', 'dodgerblue1'), # sex 
-                     na.value = 'grey35') +
-  #  scale_fill_manual(values = c(NA, 'dodgerblue4')) + 
-  scale_x_discrete(breaks = c(1, 2, 3, 4, 5),
-                     labels = c('Sep', 'Nov', 'Dec', 'Jan', 'Jun')) +
-#  guides(fill = F, color = F) +
-  xlab('Months') +
-  ylab('Scaled intensities') +
-  theme_bw() +
-  theme(legend.position = 'bottom',
-        legend.margin = margin(-10, 0, 0, 0))
-
-ggsave(file.path(current_dir, paste0('boxplots_ONLYpredSEX_', trait,'Trait_', 
-                                     th, 'GS',
-                                     '.png')), 
-       scale = 0.8,
-       width = 10, height = 8)
-
-
-to_plot <- subset(intensity_long, annotation == 'MDH2')
-
+       width = 8, height = 4)
 
 

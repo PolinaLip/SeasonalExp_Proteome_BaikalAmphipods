@@ -212,13 +212,16 @@ metadata <- metadata[-c(1, 2, 3, 4, 5)]
 sth_power <- 4 # soft-threshold power, Eve
 sth_power <- 7
 sth_power <- 5 # Gla
+MMS <- 25
+MCH <- 0.15
+DS <- 4
 net <- blockwiseModules(dat_wo_missing, power = sth_power,
                         TOMType = "signed", 
-                        minModuleSize = 25, # 25
+                        minModuleSize = MMS, # 25
                         reassignThreshold = 0, 
-                        mergeCutHeight = 0.15, # 0.15
+                        mergeCutHeight = MCH, # 0.15
                         maxBlockSize = 12000,
-                        deepSplit = 4,  # 4
+                        deepSplit = DS,  # 4
                         numericLabels = TRUE,
                         pamRespectsDendro = FALSE,
                         saveTOMs = TRUE,
@@ -284,12 +287,12 @@ correlation_heatmap <- function(dir=current_dir, plot_width=900, plot_height=900
   dev.off()
 }
 
-correlation_heatmap(power=sth_power, MCH=0.25, MMS=30, ds=2, species = species,
+correlation_heatmap(power=sth_power, MCH=MCH, MMS=MMS, ds=DS, species = species,
                     plot_width=1120, plot_height=800,
-                    nameOfexp = 'Seasons_short_withNAinCond2')
+                    nameOfexp = 'Seasons_short_withNAinCond_tmp')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
-trait <- 'one'
+trait <- 'Jan'
 trait_data <- as.data.frame(metadata[trait]) # take the trait of interest
 names(trait_data) <- trait
 modNames <- substring(names(MEs), 3) # take module names without 'ME'-preposition
@@ -310,7 +313,7 @@ names(GSPvalue) <-paste("p.GS.", names(trait_data), sep="")
 
 ### Plot the genes from one module
 
-module <- "turquoise"
+module <- "purple"
 column <- match(module, modNames)
 moduleGenes <- moduleColors == module
 
@@ -352,8 +355,8 @@ proteinInfo_final <- proteinInfo[proteinOrder,]
 
 ### Draw all hub genes on the plot
 
-GS_treshold <- 0.6
-MM_treshold <- 0.6
+GS_treshold <- 0.5
+MM_treshold <- 0
 proteinInfo_final_hub <- proteinInfo_final[abs(proteinInfo_final[sprintf('GS.%s', 
                                                                          trait)]) 
                                            > GS_treshold,]
@@ -417,10 +420,7 @@ intensity_long <- intensity_scaled %>%
 pr_id <- match(intensity_long$protein, proteinInfo_final$protein)
 intensity_long$module <- proteinInfo_final[pr_id,]$moduleColor
 intensity_long$annotation <- proteinInfo_final[pr_id,]$geneSymbol
-intensity_long$GS <- proteinInfo_final[pr_id,]$GS.temp_20days
-intensity_long$GS <- proteinInfo_final[pr_id,]$GS.daylight
-intensity_long$GS <- proteinInfo_final[pr_id,]$GS.time
-intensity_long$GS <- proteinInfo_final[pr_id,]$GS.Jun
+intensity_long$GS <- proteinInfo_final[pr_id,][,paste0('GS.', trait)]
 
 #intensity_long <- subset(intensity_long, abs(GS)>0.5)
 
@@ -504,7 +504,7 @@ intensity_long_sub_med$GS <- proteinInfo_final[match(intensity_long_sub_med$prot
 intensity_long_sub_med$GS <- proteinInfo_final[match(intensity_long_sub_med$protein,
                              proteinInfo_final$protein),]$GS.time
 intensity_long_sub_med$GS <- proteinInfo_final[match(intensity_long_sub_med$protein,
-                                                     proteinInfo_final$protein),]$GS.Jun
+                                                     proteinInfo_final$protein),]$GS.Jan
 
 little <- data.frame(temp = c(11.27, 5.77, 3.2, 1.72, 3.69),
                      month = c('Sep', 'Nov', 'Dec', 'Jan', 'Jun'))
@@ -535,7 +535,7 @@ gs_treshold <- 0.7
 inten_sub_sub <- subset(intensity_long_sub_med, abs(GS) > gs_treshold)
 protein_names <- subset(inten_sub_sub, temp_20days == max(temp_20days))
 protein_names <- subset(inten_sub_sub, daylight == max(daylight))
-protein_names <- subset(inten_sub_sub, time == 'Jun')
+protein_names <- subset(inten_sub_sub, time == 'Jan')
 
 protein_names$annotation <- 
   sub('PREDICTED: |LOW QUALITY PROTEIN: |LOW QUALITY PROTEIN: |-like|, partial|isoform X1', 
@@ -740,7 +740,7 @@ gene_go_bonus_ <- gene_go_bonus$go_term
 names(gene_go_bonus_) <- gene_go_bonus$up_gene_name
 
 #####
-module <- 'black'
+module <- 'tan'
 intensity_long$MM <- proteinInfo_final[pr_id, paste0('MM.', module)]
 
 intensity_long$pMM <- proteinInfo_final[pr_id,]$p.MM.green
@@ -756,6 +756,7 @@ unique_proteins <- group_by(intensity_long, protein) %>%
   slice_head() %>%
   ungroup()
 
+unique_proteins <- subset(unique_proteins, !is.na(module))
 # take wanted statistics 
 proteins_list <- unique_proteins$MM
 
@@ -780,7 +781,7 @@ gene_go_all_ <- c(gene_go_, gene_go_from_bonus)
 proteins_list4 <- proteins_list2[names(proteins_list2) %in% names(gene_go_all_)]
 
 # run topgo
-threshold <- 0.5
+threshold <- 0.4
 ontology <- 'BP'
 GOdata <- new("topGOdata", description = "Simple session", 
               ontology = ontology,
@@ -844,7 +845,7 @@ intensity_long_sub$whole_label2 <- factor(intensity_long_sub$whole_label,
 intensity_long_sub$MM <- intensity_long[match(intensity_long_sub$protein, 
                                           intensity_long$protein),]$MM
 
-GO2draw <- 'GO:0055002'
+GO2draw <- 'GO:0007264'
 wanted <- proteins_list4[names(proteins_list4) %in% allGO[[GO2draw]]] 
 proteints2plot <- wanted[abs(wanted) > threshold]
 intensity_long_sub_toplot <- subset(intensity_long_sub, MM %in% proteints2plot)
@@ -859,12 +860,12 @@ intensity_long_sub_toplot$time <- ifelse(intensity_long_sub_toplot$month == 'Sep
                                                 ifelse(intensity_long_sub_toplot$month == 'December', 3,
                                                        ifelse(intensity_long_sub_toplot$month == 'January', 4, 5))))
 
-months_mean <- aggregate(intensity ~ condition, intensity_long_sub_toplot, mean)
-months_mean$condition <- sub('_BK', '', months_mean$condition)
-months_mean$time <- ifelse(months_mean$condition == 'September', 1,
-                           ifelse(months_mean$condition == 'November', 2,
-                                  ifelse(months_mean$condition == 'December', 3,
-                                         ifelse(months_mean$condition == 'January', 4, 5))))
+months_mean <- aggregate(intensity ~ month, intensity_long_sub_toplot, mean)
+#months_mean$condition <- sub('_BK', '', months_mean$condition)
+months_mean$time <- ifelse(months_mean$month == 'September', 1,
+                           ifelse(months_mean$month == 'November', 2,
+                                  ifelse(months_mean$month == 'December', 3,
+                                         ifelse(months_mean$month == 'January', 4, 5))))
 
 intensity_long_sub_toplot <- subset(intensity_long_sub_toplot, intensity < 4) 
 
