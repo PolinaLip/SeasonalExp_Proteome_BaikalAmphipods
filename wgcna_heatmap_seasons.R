@@ -34,7 +34,9 @@ mtc_long$text_label <- ifelse(mtc_long$pvalue_ast != '',
                               paste0(round(mtc_long$Correlation, digits = 2), '\n'))
 mtc_long <- subset(mtc_long, Module != 'grey')
 mtc_long$Condition <- factor(mtc_long$Condition, levels = levels(mtc_long$Condition),
-                             labels = c(levels(mtc_long$Condition)[1:6], intToUtf8(9792),
+                             #labels = c(levels(mtc_long$Condition)[1:6], # wo June
+                             labels = c(levels(mtc_long$Condition)[1:7], 
+                                        intToUtf8(9792),
                                         intToUtf8(9794), 
                              paste0('Sep, ', intToUtf8(9792)),
                              paste0('Sep, ', intToUtf8(9794)), 
@@ -43,7 +45,10 @@ mtc_long$Condition <- factor(mtc_long$Condition, levels = levels(mtc_long$Condit
                              paste0('Dec, ', intToUtf8(9792)),
                              paste0('Dec, ', intToUtf8(9794)), 
                              paste0('Jan, ', intToUtf8(9792)),
-                             paste0('Jan, ', intToUtf8(9794))))
+                             paste0('Jan, ', intToUtf8(9794)),
+                             paste0('Jun, ', intToUtf8(9794)),
+                             paste0('Amplexus, ', intToUtf8(9792)),
+                             paste0('Amplexus, ', intToUtf8(9794))))
 
 ### plot all modules
 ggplot(mtc_long, aes(Condition, Module, fill = Correlation)) +
@@ -66,8 +71,12 @@ ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power',
        scale = 0.9, width = 6.5, height = 8.5)
 ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
                          sth_power,'_MCH', MCH, '_MMS', MMS,'_DS', DS,
-                         '_', species, 'withATLEAST5notNAsInCond_withPredSex.png'), 
-       scale = 0.9, width = 11, height = 9)
+                         '_', species, 'withATLEAST5notNAsInCond_withPredSex_AMPL.png'), 
+       scale = 0.9, width = 12, height = 9)
+ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
+                         sth_power,'_MCH', MCH, '_MMS', MMS,'_DS', DS,
+                         '_', species, 'withATLEAST5notNAsInCond_withPredSex_AMPL_withJUNE.png'), 
+       scale = 0.9, width = 13, height = 8)
 
 ### plot only sign modules
 
@@ -82,12 +91,13 @@ sign_mtc <- mtc_long[mtc_long$Module %in% sign_mtc_logical$Module,]
 #                     Module == 'brown' | Module == 'blue')
 
 ggplot(sign_mtc, aes(Condition, Module, fill = Correlation)) +
-  geom_tile() +
-  #geom_tile(color = 'grey10') +
+  #geom_tile() +
+  geom_tile(color = 'grey10') +
   geom_text(aes(label = text_label), size = 3.7) +
   geom_vline(xintercept = 2.5) +
-  geom_vline(xintercept = 6.5) +
-  geom_vline(xintercept = 8.5) +
+  geom_vline(xintercept = 7.5) +
+  geom_vline(xintercept = 9.5) +
+  geom_vline(xintercept = 18.5) + 
   scale_fill_gradientn(colors = blueWhiteRed(50), limits = c(-1, 1)) +
   # scale_fill_gradientn(colors = blueWhiteRed(4)[c(1, 1, 2, 4, 4)], limits = c(-1, 1)) +
   scale_x_discrete(expand = expansion(add=0.51)) +
@@ -107,8 +117,13 @@ ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power',
 
 ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
                          sth_power,'_MCH', MCH, '_MMS', MMS,'_DS', DS,
-                         '_', species, 'onlySignModules_less001_withPredSex_2.png'), 
-       scale = 0.9, width = 11, height = 8)
+                         '_', species, 'onlySignModules_less001_withPredSex_AMPL2.png'), 
+       scale = 0.9, width = 12, height = 8)
+
+ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
+                         sth_power,'_MCH', MCH, '_MMS', MMS,'_DS', DS,
+                         '_', species, 'onlySignModules_less001_withPredSex_AMPL_withJUNE.png'), 
+       scale = 0.9, width = 13, height = 8)
 
 ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
                          sth_power,'_MCH', 0.15, '_MMS', 25,'_DS', 4,

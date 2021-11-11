@@ -50,7 +50,6 @@ data_for_wgcna <- data_for_wgcna[, !grepl('pool', colnames(data_for_wgcna),
 
 ### If you work with data with missing values: ####
 
-#data_for_wgcna[is.na(data_for_wgcna)] <- 0
 rownames(data_for_wgcna) <- data_for_wgcna[,1]
 data_for_wgcna <- data_for_wgcna[-1]
 
@@ -59,11 +58,11 @@ meta_complete <- read.delim(file.path(dir_metafile, metafile), header=TRUE, sep=
 meta <- meta_complete
 meta <- subset(meta, condition != 'pool')
 colnames(data_for_wgcna) <- meta$sample
-meta <- subset(meta, sex2 != 'NA')
+#meta <- subset(meta, sex2 != 'NA')
 
 ### choose sex if you want to analyse only one sex
-meta <- subset(meta, sex2 == 'male')
-meta <- subset(meta, sex2 == 'female')
+#meta <- subset(meta, sex2 == 'male')
+#meta <- subset(meta, sex2 == 'female')
 ###
 data_for_wgcna <- 
   data_for_wgcna[,colnames(data_for_wgcna) %in% meta$sample]
@@ -140,10 +139,12 @@ metadata$Sep <- ifelse(grepl('September', metadata$condition), 1, 0)
 metadata$Nov <- ifelse(grepl('November', metadata$condition), 1, 0)
 metadata$Dec <- ifelse(grepl('December', metadata$condition), 1, 0)
 metadata$Jan <- ifelse(grepl('January', metadata$condition), 1, 0)
+#metadata$Jun <- ifelse(grepl('June', metadata$condition), 1, 0)
 
 metadata$female <- ifelse(metadata$sex2 == 'female', 1, 0)
 metadata$male <- ifelse(metadata$sex2 == 'male', 1, 0)
-
+#metadata$female <- ifelse(metadata$sex2 != 'male' & !is.na(metadata$sex2), 1, 0)
+#metadata$male <- ifelse(metadata$sex2 == 'male' | metadata$condition == 'June_BK', 1, 0)
 metadata$Sep_f <- 
   ifelse(grepl('September', metadata$condition) & metadata$sex2 == 'female', 1, 0)
 metadata$Sep_m <- 
@@ -160,6 +161,11 @@ metadata$Jan_f <-
   ifelse(grepl('January', metadata$condition) & metadata$sex2 == 'female', 1, 0)
 metadata$Jan_m <- 
   ifelse(grepl('January', metadata$condition) & metadata$sex2 == 'male', 1, 0)
+#metadata$Jun_m <- 
+#  ifelse(grepl('June', metadata$condition), 1, 0)
+
+metadata$ampl_f <- ifelse(metadata$Sep_f == 1 | metadata$Nov_f == 1, 1, 0)
+metadata$ampl_m <- ifelse(metadata$Sep_m == 1 | metadata$Nov_m == 1, 1, 0)
 
 metadata <- metadata[-c(1, 2, 3, 4, 5, 6, 7, 8)]
 # 7. Constructing the gene network and identifying modules: 
@@ -241,12 +247,12 @@ correlation_heatmap <- function(dir=current_dir, plot_width=900, plot_height=900
   dev.off()
 }
 
-correlation_heatmap(power=sth_power, MCH=0.15, MMS=25, ds=4, species = species,
-                    plot_width=2000, plot_height=800,
-                    nameOfexp = 'SeasonsWithKnownSex_MonthSex')
+correlation_heatmap(power=sth_power, MCH=MCH, MMS=MMS, ds=DS, species = species,
+                    plot_width=2200, plot_height=800,
+                    nameOfexp = 'SeasonsWithKnownSex_MonthSex_June2')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
-trait <- 'Sep_m'
+trait <- 'female'
 trait_data <- as.data.frame(metadata[trait]) # take the trait of interest
 names(trait_data) <- trait
 modNames <- substring(names(MEs), 3) # take module names without 'ME'-preposition
@@ -272,7 +278,7 @@ samples2annot <- match(proteins, pg_annot_complete$protein_group)
 sum(is.na(samples2annot))
 
 proteinInfo <- data.frame(protein = proteins,
-                          geneSymbol = pg_annot_complete$annotation[samples2annot],
+                          geneSymbol = pg_annot_complete$upd_full_annot[samples2annot],
                           moduleColor = moduleColors,
                           geneTraitSignificance,
                           GSPvalue)
@@ -343,10 +349,11 @@ ggplot(proteinInfo_hub_reduced,
         panel.border = element_rect(color = 'white'))
 
 ggsave(file.path(current_dir, paste0('hub_proteins_', trait, '_GS',
-                                     GS_treshold, '.png')), scale = 1.7)
+                 GS_treshold, '_MM', MM_treshold, '.png')), scale = 1.7)
 
 ##################### Prepare long table #########################################
 intensity_scaled <- apply(data_for_wgcna, 1, scale)
+#intensity_scaled <- apply(data_for_wgcna, 1, scale)
 intensity_scaled <- t(intensity_scaled)
 intensity_scaled <- data.frame(intensity_scaled)
 colnames(intensity_scaled) <- rownames(metadata)
@@ -382,12 +389,13 @@ gene_go_bonus_ <- gene_go_bonus$go_term
 names(gene_go_bonus_) <- gene_go_bonus$up_gene_name
 
 #####
-module <- 'brown'
+module <- 'cyan'
 intensity_long$MM <- proteinInfo_final[pr_id, paste0('MM.', module)]
 
 intensity_long$pMM <- proteinInfo_final[pr_id, paste0('p.MM.', module)]
 
 intensity_long$pGS <- proteinInfo_final[pr_id, paste0('p.GS.', trait)]
+intensity_long$GS <- proteinInfo_final[pr_id, paste0('GS.', trait)]
 
 intensity_long$go_annotation <- 
   pg_annot_complete[match(intensity_long$protein, 
@@ -402,6 +410,7 @@ unique_proteins <- group_by(intensity_long, protein) %>%
 unique_proteins <- subset(unique_proteins, !is.na(module))
 # take wanted statistics 
 proteins_list <- unique_proteins$MM
+proteins_list <- unique_proteins$GS
 # name vector with statistics by the corresponed protein:
 names(proteins_list) <- toupper(unique_proteins$go_annotation)
 proteins_list2 <- proteins_list[names(proteins_list) != '*'] # avoid not annotated proteins
@@ -419,7 +428,7 @@ gene_go_all_ <- c(gene_go_, gene_go_from_bonus)
 proteins_list4 <- proteins_list2[names(proteins_list2) %in% names(gene_go_all_)]
 
 # run topgo
-threshold <- 0.8
+threshold <- 0.5
 ontology <- 'BP'
 GOdata <- new("topGOdata", description = "Simple session", 
               ontology = ontology,
@@ -450,7 +459,7 @@ for (row in 1:nrow(allRes)) {
   current_row <- allRes[row,]
   current_go <- as.character(current_row[1])
   wanted_ <- proteins_list4[names(proteins_list4) %in% allGO[[current_go]]] 
-  genes_names <- paste0(names(wanted_[wanted_ > threshold]), collapse = '', sep = ';')
+  genes_names <- paste0(names(wanted_[wanted_ < -threshold]), collapse = '', sep = ';')
   names(genes_names) <- 'significant_genes'
   go_table_w_genes <- rbind(go_table_w_genes, 
                             as.data.frame(c(current_row, genes_names)))
@@ -460,6 +469,13 @@ write.table(go_table_w_genes,
             file = file.path(current_dir, 
                              paste0('topgo_ONLYpredSEX_', module, 
                                     'Module_', threshold, 
+                                    '_ontology', ontology,'.csv')), row.names = F)
+
+more_or_less <- 'lessMinus'
+write.table(go_table_w_genes, 
+            file = file.path(current_dir, 
+                             paste0('topgo_ONLYpredSEX_', trait, 
+                                    '_Trait_', more_or_less, threshold, 
                                     '_ontology', ontology,'.csv')), row.names = F)
 
 ### Plot significant proteins from chosen GO terms (boxplots) 

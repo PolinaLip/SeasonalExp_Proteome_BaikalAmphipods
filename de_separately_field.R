@@ -23,6 +23,8 @@ meta_upload <- function(path_to_file, species_name) {
 
 path2meta <- paste0('labeglo2/MS_results/Field/', species,
                     '/', species, '_refchannels_all', '/Metadata_Proteus.tsv')
+path2meta <- paste0('labeglo2/MS_results/Field/', species,
+                    '/', species, '_refchannels_all', '/metadata_predictedSex.csv') # with predicted sex
 
 meta <- meta_upload(path2meta, species)
 meta[which(meta$sex == ''),]$sex <- 'NA'
@@ -225,29 +227,33 @@ pca_res <- prcomp(data_sl_t)
 meta2 <- meta
 meta2$experiment <- as.factor(meta2$experiment)
 meta2$condition <- sub('_BK', '', meta2$condition)
-meta2 <- subset(meta2, sex != 'NA') # only for the figure with samples with known sex
+#meta2 <- subset(meta2, sex != 'NA') # only for the figure with samples with known sex
 #data_sl_t <- data_sl_t[meta2$sample,] # only for the figure with samples with known sex 
 #meta2 <- subset(meta2, !grepl('pool', sample)) # to draw wo pools
+#meta2$sex2[is.na(meta2$sex2)] <- 'NA'
+meta2$condition <- factor(meta2$condition, levels = unique(meta2$condition),
+                          labels = unique(meta2$condition))
 autoplot(pca_res, data=meta2, colour='condition', size = 3, shape='sex') + theme_light()
 autoplot(pca_res, data=meta2, colour='condition', size = 3, 
-         #shape='sex', 
-         frame = T, 
+         shape='sex2',
+         alpha = 0.9,
+         #frame = T, 
          x = 1,
          y = 2) + 
   theme_light() + 
-  scale_color_manual('Condition', 
+  scale_color_manual('Months', 
                      values = palette.colors(n=6, 'Dark2')) +
-  scale_fill_manual('Condition', 
+  scale_fill_manual('Months', 
                      values = palette.colors(n=6, 'Dark2')) +
-  scale_shape_manual('Sex', values = c(16, 17, 10))
+  scale_shape_manual('Sex', values = c(16, 17, 4))
 
 # autoplot(pca_res, data=meta2, colour='condition', label = TRUE, label.size = 5) + theme_light()
 # meta2[rownames(meta2) == 44,]$sample
 # ! outlier found: F/100/BK/3c/2m_2
 ggsave(filename = file.path(dir_to_results, paste0('pca_', 
-       species,'_seasonalExp_withPools_ONLYSex.png')), 
-       scale = 1,
-       width = 6, height = 3)
+       species,'_seasonalExp_withPools_withPredSex_allMonths.png')), 
+       scale = 0.85,
+       width = 6, height = 4.4)
 
 ### 8. Multiply the normalized data by 10^7 to make it possible to perform DE analysis
 data_sl_mult <- data_sl * 10000000 # for PSM-normalized data

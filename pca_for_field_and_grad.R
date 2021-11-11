@@ -9,7 +9,7 @@ library(rstatix)
 
 dir_to_save_results <- 'labeglo2/MS_results/Field_Grad_Comparison/'
 
-species <- 'Gla'
+species <- 'Eve'
 meta_upload <- function(path_to_file, species_name) {
   meta <- read.csv(file = path_to_file, sep = '\t')
   meta$measure <- sub('intensity', 'intensity corrected', meta$measure)
@@ -18,30 +18,31 @@ meta_upload <- function(path_to_file, species_name) {
 }
 
 path2meta <- paste0('labeglo2/MS_results/Field/', species,
-                    '/', species, '_refchannels_all', '/Metadata_Proteus.tsv')
+                    '/', species, '_refchannels_all', '/metadata_predictedSex.csv')
 
 meta <- meta_upload(path2meta, species)
 meta <- meta[!grepl('PB|pool_12', meta$sample),]
 meta <- subset(meta, condition != 'pool')
 meta <- subset(meta, sample != 'F/100/BK/3c/2m_2')
 meta_field <- meta[-6]
+meta_field <- meta[-c(6,7)]
 meta_field$experiment <- as.numeric(meta_field$experiment)
 meta_field <- subset(meta_field, condition != 'pool')
 
-path2meta <-
+path2meta_grad <-
   paste0('labeglo2/MS_results/GradDecrease_2/separately_assembled/',
-         species, '/Metadata_Proteus.csv')
+         species, '/Metadata_Proteus_withPredSex.csv')
 
-meta <- meta_upload(path2meta, species)
-meta <- subset(meta, !grepl('PB', sample))
-meta <- subset(meta, !grepl('Pool', sample))
+meta_g <- meta_upload(path2meta_grad, species)
+meta_g <- subset(meta_g, !grepl('PB', sample))
+meta_g <- subset(meta_g, !grepl('Pool', sample))
 
-meta_grad <- meta
+meta_grad <- meta_g
 
 dir_to_field <- paste0('labeglo2/MS_results/Field/', species, '/', species, 
                        '_refchannels_all')
 data_field <- read.table(file.path(dir_to_field, 
-                                 paste0('intensities_after_slNorm_', 
+                                 paste0('intensities_after_slNorm_withNA', 
                                         tolower(species), '.csv')), header = T)
 
 rownames(data_field) <- data_field$protein_group
@@ -55,6 +56,17 @@ data_grad <- read.table(file.path(dir_to_grad,
                                         tolower(species), '.csv')), header = T)
 rownames(data_grad) <- data_grad$protein_group
 data_grad <- data_grad[-1]
+
+#### upload annotations
+prot_annot_field <- read.csv(file.path(dir_to_field, 
+                                paste0('annot_proteinGroups_field_', tolower(species), 
+                                       '_withGOannotation.csv')), 
+                      sep = '\t', header = T)
+
+prot_annot_grad <- 
+  read.csv(file.path(dir_to_grad, paste0('annot_proteinGroups_', 
+                                       tolower(species), '_withGOannotation.csv')), 
+           sep = '\t', header = T) 
 
 #### scale intensities
 scaled_intensities_field <- apply(data_field, 1, scale)
@@ -110,18 +122,29 @@ protein_name_grid_sub_filtered <-
 protein_name_grid_sub_filtered <- 
   subset(protein_name_grid_sub_filtered, grad_pg %in% names(prot_single_entry_grad))
 
-### 
+### take only ovellaped proteins from two experiment 
 
 data_field_sub <- 
   subset(scaled_intensities_field, sorted_protein %in% protein_name_grid_sub_filtered$field_pg)
 data_grad_sub <- 
   subset(scaled_intensities_grad, sorted_protein %in% protein_name_grid_sub_filtered$grad_pg)
 
+data_field_sub_withAnnot <- data_field_sub
+data_grad_sub_withAnnot <- data_grad_sub
+data_field_sub_withAnnot$annotation <-
+  prot_annot_field[match(rownames(data_field_sub_withAnnot), 
+                         prot_annot_field$protein_group),]$upd_full_annot
+data_grad_sub_withAnnot$annotation <-
+  prot_annot_grad[match(rownames(data_grad_sub_withAnnot), 
+                         prot_annot_grad$protein_group),]$upd_full_annot
+
 data_joined <- inner_join(data_field_sub, data_grad_sub, 
                           by = c("sorted_protein" = "sorted_protein"))
 
 rownames(data_joined) <- data_joined$sorted_protein
 data_joined <- data_joined[, colnames(data_joined) != 'sorted_protein']
+meta_field$sex <- meta_field$sex2 
+meta_field <- meta_field[-6]
 meta_joined <- rbind(meta_field, meta_grad)
 
 ### PCA
@@ -131,17 +154,19 @@ data_joined_t <- na.omit(data_joined) %>% t %>% as.data.frame
 #data_sl_t <- data_sl_t[!grepl('pool', rownames(data_sl_t)),] # to draw wo pools
 
 pca_res <- prcomp(data_joined_t)
-meta2 <- meta
-meta2$experiment <- as.factor(meta2$experiment)
-meta2$condition <- sub('_BK', '', meta2$condition)
+#meta2 <- meta
+#meta2$experiment <- as.factor(meta2$experiment)
+meta_joined$condition <- sub('_BK', '', meta_joined$condition)
+meta_joined$sex[is.na(meta_joined$sex)] <- 'Unknown'
 #meta2 <- subset(meta2, sex != 'NA') # only for the figure with samples with known sex
 #data_sl_t <- data_sl_t[meta2$sample,] # only for the figure with samples with known sex 
 #meta2 <- subset(meta2, !grepl('pool', sample)) # to draw wo pools
 autoplot(pca_res, data=meta_joined, colour='condition', frame = T) + theme_light()
 autoplot(pca_res, data=meta_joined, colour='condition', size = 3,
+         shape = 'sex',
          frame = F, 
-         x = 2,
-         y = 3) + 
+         x = 1,
+         y = 2) + 
   theme_light() + 
   scale_color_manual('Condition', 
                      values = palette.colors(n=8, 'Dark2'))
