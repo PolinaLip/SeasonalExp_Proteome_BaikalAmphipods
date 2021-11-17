@@ -28,6 +28,10 @@ dir_to_intensities <- paste0('labeglo2/MS_results/Field/', species,
                              '/', species,'_refchannels_all/')
 current_dir <- paste0('labeglo2/MS_results/Field/', species, 
                       '/', species,'_refchannels_all/withALLzeros_inAtLeastOneCond/')
+dir_2_save <- paste0('labeglo2/MS_results/Field/', species, 
+                     '/', 
+                     species,
+                     '_refchannels_all/withALLzeros_inAtLeastOneCond/withJune_and_minNAs')
 pg_annot_complete <- read.csv(file.path(dir_annot, 
                                         paste0('annot_proteinGroups_field_', tolower(species), 
                                                '_withGOannotation_with_organisms.csv')), 
@@ -170,10 +174,7 @@ metadata$ampl_m <- ifelse(metadata$Sep_m == 1 | metadata$Nov_m == 1, 1, 0)
 metadata <- metadata[-c(1, 2, 3, 4, 5, 6, 7, 8)]
 # 7. Constructing the gene network and identifying modules: 
 sth_power <- 4 # soft-threshold power
-sth_power <- 6 # both sexes
 sth_power <- 5
-sth_power <- 5 # male
-sth_power <- 7 # female
 MMS <- 25
 MCH <- 0.15
 DS <- 4
@@ -299,7 +300,7 @@ proteinInfo_final <- proteinInfo[proteinOrder,]
 
 ### Draw all hub genes on the plot
 
-GS_treshold <- 0.6
+GS_treshold <- 0.7
 MM_treshold <- 0.6
 proteinInfo_final_hub <- proteinInfo_final[abs(proteinInfo_final[sprintf('GS.%s', 
                                                                          trait)]) 
@@ -353,7 +354,6 @@ ggsave(file.path(current_dir, paste0('hub_proteins_', trait, '_GS',
 
 ##################### Prepare long table #########################################
 intensity_scaled <- apply(data_for_wgcna, 1, scale)
-#intensity_scaled <- apply(data_for_wgcna, 1, scale)
 intensity_scaled <- t(intensity_scaled)
 intensity_scaled <- data.frame(intensity_scaled)
 colnames(intensity_scaled) <- rownames(metadata)
@@ -389,7 +389,7 @@ gene_go_bonus_ <- gene_go_bonus$go_term
 names(gene_go_bonus_) <- gene_go_bonus$up_gene_name
 
 #####
-module <- 'cyan'
+module <- 'tan'
 intensity_long$MM <- proteinInfo_final[pr_id, paste0('MM.', module)]
 
 intensity_long$pMM <- proteinInfo_final[pr_id, paste0('p.MM.', module)]
@@ -408,10 +408,10 @@ unique_proteins <- group_by(intensity_long, protein) %>%
   slice_head() %>%
   ungroup()
 unique_proteins <- subset(unique_proteins, !is.na(module))
-# take wanted statistics 
+### take wanted statistics 
 proteins_list <- unique_proteins$MM
-proteins_list <- unique_proteins$GS
-# name vector with statistics by the corresponed protein:
+#proteins_list <- unique_proteins$GS
+### name vector with statistics by the corresponded protein:
 names(proteins_list) <- toupper(unique_proteins$go_annotation)
 proteins_list2 <- proteins_list[names(proteins_list) != '*'] # avoid not annotated proteins
 proteins_list3 <- proteins_list2[names(proteins_list2) %in% gene_go$X4] # take only proteins with known go terms
@@ -428,7 +428,7 @@ gene_go_all_ <- c(gene_go_, gene_go_from_bonus)
 proteins_list4 <- proteins_list2[names(proteins_list2) %in% names(gene_go_all_)]
 
 # run topgo
-threshold <- 0.5
+threshold <- 0.6
 ontology <- 'BP'
 GOdata <- new("topGOdata", description = "Simple session", 
               ontology = ontology,
@@ -459,14 +459,14 @@ for (row in 1:nrow(allRes)) {
   current_row <- allRes[row,]
   current_go <- as.character(current_row[1])
   wanted_ <- proteins_list4[names(proteins_list4) %in% allGO[[current_go]]] 
-  genes_names <- paste0(names(wanted_[wanted_ < -threshold]), collapse = '', sep = ';')
+  genes_names <- paste0(names(wanted_[wanted_ > threshold]), collapse = '', sep = ';')
   names(genes_names) <- 'significant_genes'
   go_table_w_genes <- rbind(go_table_w_genes, 
                             as.data.frame(c(current_row, genes_names)))
 }
 
 write.table(go_table_w_genes, 
-            file = file.path(current_dir, 
+            file = file.path(dir_2_save, 
                              paste0('topgo_ONLYpredSEX_', module, 
                                     'Module_', threshold, 
                                     '_ontology', ontology,'.csv')), row.names = F)

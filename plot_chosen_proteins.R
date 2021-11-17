@@ -7,9 +7,7 @@ get_protein_label <- function(x) {
 
 toplot <- intensity_long[grepl('HSPD1|cct', intensity_long$upd_full_annotation, 
                                ignore.case = T),]
-toplot <- scaled_intensities_long[grepl('Vg', scaled_intensities_long$annotation, 
-                               ignore.case = T),]
-toplot <- intensity_long[grepl('Vg', intensity_long$upd_full_annotation, 
+toplot <- intensity_long[grepl('cpap3|mucin|verm', intensity_long$upd_full_annotation, 
                                ignore.case = T),]
 toplot <- intensity_long[grepl('pheromone|ATIC|Vg|VMO1', intensity_long$upd_full_annotation, 
                                ignore.case = T),]
@@ -18,16 +16,16 @@ toplot <- intensity_long[grepl('ABC|pix', intensity_long$upd_full_annotation,
 
 # if want to look at top proteins of a module #
 chosen_module <- module
-chosen_trait <- trait
+#chosen_trait <- trait
 #toplot <- subset(intensity_long, module == chosen_module)
-module_threshold <- 0.7
-trait_threshold <- 0.4
-mm_pvalue_threshold <- 0.01
-gs_pvalue_threshold <- 0.01
+module_threshold <- 0.8
+#trait_threshold <- 0.4
+mm_pvalue_threshold <- 0.05
+#gs_pvalue_threshold <- 0.01
 toplot <- subset(intensity_long, MM > module_threshold & pMM < mm_pvalue_threshold)
-toplot <- subset(intensity_long, GS > trait_threshold & pGS < gs_pvalue_threshold)
+#toplot <- subset(intensity_long, GS > trait_threshold & pGS < gs_pvalue_threshold)
 max(toplot$pMM)
-max(toplot$pGS)
+#max(toplot$pGS)
 #toplot <- subset(toplot, MM > module_threshold & pMM < mm_pvalue_threshold)
 ###
 
@@ -42,7 +40,7 @@ toplot$time <- ifelse(toplot$month == 'September', 1,
 toplot$upd_full_annotation <- sub('PREDICTED: |-like| isoform X\\d+', '', toplot$upd_full_annotation)
 toplot$upd_full_annotation <- sapply(
   toplot$upd_full_annotation, function(x)
-    paste(strwrap(x, width=26), collapse='\n'))
+    paste(strwrap(x, width=23), collapse='\n'))
 
 toplot$whole_label <- sprintf('%s|%s', toplot$protein,
                               toplot$upd_full_annotation)
@@ -114,7 +112,7 @@ toplot$sex[toplot$sex == 'NA'] <- NA
 #         protein %in% unique(toplot$protein)[c(4,7,9)])
 
 ggplot(toplot, aes(time, intensity, group = time)) +
-  facet_wrap(~ whole_label2, ncol = 5,
+  facet_wrap(~ whole_label2, ncol = 4,
              labeller = as_labeller(get_protein_label)
   ) +
   #, scales = 'free_y') +
@@ -152,7 +150,7 @@ ggsave(file.path(current_dir, paste0('boxplots_Vg_withSexAssignment_onlyUsedForP
        width = 6, height = 2.7, scale = 0.8)
 
 #### Plot proteins with predicted sex ####
-
+  
 toplot$sex <- meta[match(toplot$sample, 
                    meta$sample),]$sex2
 #toplot$sex[is.na(toplot$sex)] <- 'male'
@@ -170,15 +168,16 @@ months_mean_male$time <- ifelse(months_mean_male$month == 'September', 1,
                                        ifelse(months_mean_male$month == 'December', 3,
                                               ifelse(months_mean_male$month == 'January', 4, 5))))
 
-toplot <- subset(toplot, intensity > -2 & intensity < 4) 
+#toplot <- subset(toplot, intensity > -2 & intensity < 4) 
+#toplot <- subset(toplot, intensity < 4) 
 
 #intensity_long_toplot$sex <- meta[match(intensity_long_toplot$sample,
 #                                        meta$sample),]$sex2
 
-toplot <- subset(toplot, upd_full_annotation != '*')
+#toplot <- subset(toplot, upd_full_annotation != '*')
 
 (ggplot(toplot, aes(factor(time), intensity)) +
-    facet_wrap(~ whole_label2, ncol = 3,
+    facet_wrap(~ whole_label2, ncol = 5,
                labeller = as_labeller(get_protein_label), 
                #scales = 'free_y') +
     )+
@@ -194,7 +193,8 @@ toplot <- subset(toplot, upd_full_annotation != '*')
               size = 1.2) +
     scale_x_discrete(breaks = c(1, 2, 3, 4, 5),
                      labels = c('Sep', 'Nov', 'Dec', 'Jan', 'Jun')) +
-    scale_color_manual('Sex', values = c('deeppink1', 'dodgerblue1'), # sex 
+    scale_color_manual('Sex: ', values = c('deeppink1', 'dodgerblue1'), # sex 
+                       labels = c('Female', 'Male', 'Unknown'),
                        na.value = 'grey35') + # sex
     #  guides(fill = F
     #         , color = F) + # sex
@@ -204,20 +204,17 @@ toplot <- subset(toplot, upd_full_annotation != '*')
     theme_bw() +
     theme(axis.title.x = element_text(size = 13),
           axis.title.y = element_text(size = 13),
-          legend.position = 'bottom',
-          legend.margin = margin(-10, 0, 0, 0)))
+          legend.position = 'top',
+          legend.margin = margin(0,0,-10,0),
+          legend.key.width = unit(5, 'pt'),
+          legend.text = element_text(margin = margin(0, 5, 0, 0))))
 
-ggsave(file.path(current_dir, paste0('boxplots_', chosen_module, 
-                                     '_more', module_threshold, 'pvalue', 
-                                     mm_pvalue_threshold,
-                                     '_withPredSex.png')),
-       width = 6, height = 3.2, scale = 0.9)
-
-ggsave(file.path(current_dir, paste0('boxplots_', chosen_module, 
-                                     '_more', module_threshold, 'pvalue', 
-                                     mm_pvalue_threshold,
+ggsave(file.path(dir_2_save, paste0('boxplots_', chosen_module, 
+                                     '_more', module_threshold, 'MAXpvalue', 
+                                     max(toplot$pMM),
                                      '_withPredSex_withJUNE.png')),
-       width = 6, height = 4, scale = 0.9)
+       width = 8, height = 5, scale = 0.9)
+# 4x2: width = 7, height = 4, scale = 0.9
 
 ggsave(file.path(current_dir, paste0('boxplots_', chosen_trait, 
                                      '_more', trait_threshold, 'pvalue', 
