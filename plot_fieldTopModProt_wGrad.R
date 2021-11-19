@@ -128,6 +128,7 @@ all_toplot$whole_label2 <- factor(all_toplot$whole_label,
                               levels=unique(
                                 all_toplot$whole_label[order(all_toplot$annotation)]))
 
+all_toplot <- subset(all_toplot, intensity < 2.5)
 (ggplot(all_toplot, aes(condition, intensity)) +
     facet_wrap(~ whole_label2, ncol = 4,
                labeller = as_labeller(get_protein_label), 
@@ -167,7 +168,8 @@ all_toplot$whole_label2 <- factor(all_toplot$whole_label,
           legend.position = 'top',
           legend.margin = margin(0,0,-10,0),
           legend.key.width = unit(5, 'pt'),
-          legend.text = element_text(margin = margin(0, 5, 0, 0))))
+          legend.text = element_text(margin = margin(0, 5, 0, 0), 
+                                     size = 11)))
 
 ggsave(file.path(dir_to_save_results,
                  paste0('boxplots_', chosen_module, 
@@ -175,7 +177,15 @@ ggsave(file.path(dir_to_save_results,
                         max(toplot$pMM),
                         '_fieldwNA_GradWoNAs',
                         '_withPredSex_withJUNE.png')),
-       width = 9, height = 7, scale = 0.87)
+       width = 9, height = 5.5, scale = 0.87)
 
 # 4x2: width = 9, height = 4.7, scale = 0.87
+
+ggsave(file.path(dir_to_save_results,
+                 paste0('boxplots_', chosen_module, 
+                        '_more', module_threshold, '_MAXpvalue', 
+                        max(toplot$pMM),
+                        '_fieldwNA_GradWoNAs',
+                        '_withPredSex_withJUNE_withChosenProteins.png')),
+       width = 9, height = 2.9, scale = 0.87)
 

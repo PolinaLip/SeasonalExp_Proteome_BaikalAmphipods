@@ -253,7 +253,7 @@ correlation_heatmap(power=sth_power, MCH=MCH, MMS=MMS, ds=DS, species = species,
                     nameOfexp = 'SeasonsWithKnownSex_MonthSex_June2')
 
 ### Module Membership (MM) and Gene Significance (GS) calculation
-trait <- 'female'
+trait <- 'ampl_m'
 trait_data <- as.data.frame(metadata[trait]) # take the trait of interest
 names(trait_data) <- trait
 modNames <- substring(names(MEs), 3) # take module names without 'ME'-preposition
@@ -300,8 +300,8 @@ proteinInfo_final <- proteinInfo[proteinOrder,]
 
 ### Draw all hub genes on the plot
 
-GS_treshold <- 0.7
-MM_treshold <- 0.6
+GS_treshold <- 0.4
+MM_treshold <- 0
 proteinInfo_final_hub <- proteinInfo_final[abs(proteinInfo_final[sprintf('GS.%s', 
                                                                          trait)]) 
                                            > GS_treshold,]
@@ -389,7 +389,13 @@ gene_go_bonus_ <- gene_go_bonus$go_term
 names(gene_go_bonus_) <- gene_go_bonus$up_gene_name
 
 #####
-module <- 'tan'
+module <- 'black'
+
+intensity_long$MM.brown <- proteinInfo_final[pr_id, paste0('MM.', 'brown')]
+intensity_long$MM.yellow <- proteinInfo_final[pr_id, paste0('MM.', 'yellow')]
+intensity_long$MM.magenta <- proteinInfo_final[pr_id, paste0('MM.', 'magenta')]
+intensity_long$MM.green <- proteinInfo_final[pr_id, paste0('MM.', 'green')]
+
 intensity_long$MM <- proteinInfo_final[pr_id, paste0('MM.', module)]
 
 intensity_long$pMM <- proteinInfo_final[pr_id, paste0('p.MM.', module)]
@@ -428,7 +434,7 @@ gene_go_all_ <- c(gene_go_, gene_go_from_bonus)
 proteins_list4 <- proteins_list2[names(proteins_list2) %in% names(gene_go_all_)]
 
 # run topgo
-threshold <- 0.6
+threshold <- 0.35
 ontology <- 'BP'
 GOdata <- new("topGOdata", description = "Simple session", 
               ontology = ontology,

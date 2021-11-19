@@ -11,25 +11,51 @@ toplot <- intensity_long[grepl('cpap3|mucin|verm', intensity_long$upd_full_annot
                                ignore.case = T),]
 toplot <- intensity_long[grepl('pheromone|ATIC|Vg|VMO1', intensity_long$upd_full_annotation, 
                                ignore.case = T),]
-toplot <- intensity_long[grepl('ABC|pix', intensity_long$upd_full_annotation, 
+toplot <- intensity_long[grepl('GPX7', intensity_long$upd_full_annotation, 
                                ignore.case = T),]
+
+# if you want to look at several modules
+chosen_module <- c('brown', 'yellow', 'magenta', 'green')
+module_threshold <- 0.87
+toplot <- subset(intensity_long, module %in% chosen_module) # to plot several modules
+toplot$MM <- ifelse(toplot$module == 'brown', toplot$MM.brown, 
+                    ifelse(toplot$module == 'yellow', toplot$MM.yellow, 
+                            ifelse(toplot$MM.magenta == 'magenta', toplot$MM.magenta, 
+                                   toplot$MM.green)))
+toplot <- subset(toplot, MM > module_threshold)
+max(toplot$pMM)
 
 # if want to look at top proteins of a module #
 chosen_module <- module
+
 #chosen_trait <- trait
-#toplot <- subset(intensity_long, module == chosen_module)
-module_threshold <- 0.8
-#trait_threshold <- 0.4
+module_threshold <- 0.78
+trait_threshold <- 0.40
 mm_pvalue_threshold <- 0.05
-#gs_pvalue_threshold <- 0.01
+gs_pvalue_threshold <- 0.01
+
 toplot <- subset(intensity_long, MM > module_threshold & pMM < mm_pvalue_threshold)
+#toplot <- subset(intensity_long, MM > module_threshold & MM < 0.7)
+
+toplot <- toplot[grepl('984_cov_17960|TRINITY_DN1830_c0_g1_i14.p3_Ecy', 
+                       toplot$protein, 
+                               ignore.case = T) |
+                   grepl('TNNI1|^up', toplot$upd_full_annotation, 
+                         ignore.case = T),] #green
+toplot <- toplot[grepl('Got1|Gcn1|Argk|ALDOC', toplot$upd_full_annotation, 
+                         ignore.case = T),] #brown
+toplot <- toplot[grepl('sls|unc-22|unc-89', toplot$upd_full_annotation, 
+                       ignore.case = T),] # magenta
+toplot <- toplot[grepl('tuba3a|unc-49|PPP3cc|FLNB|Got2|Pgk', toplot$upd_full_annotation, 
+                       ignore.case = T),] # yellow
 #toplot <- subset(intensity_long, GS > trait_threshold & pGS < gs_pvalue_threshold)
 max(toplot$pMM)
 #max(toplot$pGS)
 #toplot <- subset(toplot, MM > module_threshold & pMM < mm_pvalue_threshold)
 ###
 
-toplot$month <- meta[match(toplot$sample, meta$sample),]$condition
+#toplot$month <- meta[match(toplot$sample, meta$sample),]$condition
+toplot$month <- meta[match(toplot$sample, meta$sample),]$condition_
 
 toplot$month <- sub('_BK', '', toplot$month)
 
@@ -177,7 +203,8 @@ months_mean_male$time <- ifelse(months_mean_male$month == 'September', 1,
 #toplot <- subset(toplot, upd_full_annotation != '*')
 
 (ggplot(toplot, aes(factor(time), intensity)) +
-    facet_wrap(~ whole_label2, ncol = 5,
+    facet_wrap(~ whole_label2, ncol = 4
+               ,
                labeller = as_labeller(get_protein_label), 
                #scales = 'free_y') +
     )+
@@ -213,8 +240,14 @@ ggsave(file.path(dir_2_save, paste0('boxplots_', chosen_module,
                                      '_more', module_threshold, 'MAXpvalue', 
                                      max(toplot$pMM),
                                      '_withPredSex_withJUNE.png')),
-       width = 8, height = 5, scale = 0.9)
+       width = 6.5, height = 5.5, scale = 0.9)
 # 4x2: width = 7, height = 4, scale = 0.9
+
+ggsave(file.path(dir_2_save, paste0('boxplots_', chosen_module, 
+                                    '_more', module_threshold, 'MAXpvalue', 
+                                    max(toplot$pMM),
+                                    '_withPredSex_withJUNE_withChosenProteins.png')),
+       width = 7, height = 4.2, scale = 0.9)
 
 ggsave(file.path(current_dir, paste0('boxplots_', chosen_trait, 
                                      '_more', trait_threshold, 'pvalue', 

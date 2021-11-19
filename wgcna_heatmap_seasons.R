@@ -1,6 +1,10 @@
 ### Plot heatmap for wgcna correlation plot
 # for the plotting, wgcna script should be running until the moment with correlation plots
+library(ggplot2)
 library(ggthemes)
+library(tidyr)
+library(tibble)
+library(WGCNA)
 
 dir_to_save <- 'labeglo2/MS_results/Field/Eve/Eve_refchannels_all/withALLzeros_inAtLeastOneCond/'
 
@@ -48,18 +52,23 @@ mtc_long$Condition <- factor(mtc_long$Condition, levels = levels(mtc_long$Condit
                              paste0('Dec, ', intToUtf8(9794)), 
                              paste0('Jan, ', intToUtf8(9792)),
                              paste0('Jan, ', intToUtf8(9794))
-                             #,
+                             ,
                              #paste0('Jun, ', intToUtf8(9794))
                              #,
-                             #paste0('Amplexus, ', intToUtf8(9792)),
-                             #paste0('Amplexus, ', intToUtf8(9794)))
-                             ))
+                             paste0('Amplexus, ', intToUtf8(9792)),
+                             paste0('Amplexus, ', intToUtf8(9794)))
+                             #)
+                             )
 
 ### plot all modules
 ggplot(mtc_long, aes(Condition, Module, fill = Correlation)) +
   geom_tile() +
   #geom_tile(color = 'grey10') +
   geom_text(aes(label = text_label), size = 3.7) +
+  geom_vline(xintercept = 2.5) +
+  geom_vline(xintercept = 7.5) +
+  geom_vline(xintercept = 9.5) +
+  geom_vline(xintercept = 17.5) + 
   ylab('Modules') +
   xlab('Traits') +
   scale_fill_gradientn('Correlation:  ', colors = blueWhiteRed(50), limits = c(-1, 1)) +
@@ -79,8 +88,8 @@ ggplot(mtc_long, aes(Condition, Module, fill = Correlation)) +
 
 ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
                          sth_power,'_MCH', MCH, '_MMS', MMS,'_DS', DS,
-                         '_', species, 'withATLEAST5notNAsInCond_withJune.png'), 
-       scale = 0.9, width = 11, height = 8)
+                         '_', species, 'withATLEAST5notNAsInCond_withJune_AMPL.png'), 
+       scale = 0.9, width = 12, height = 8)
 ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
                          sth_power,'_MCH', MCH, '_MMS', MMS,'_DS', DS,
                          '_', species, 'withATLEAST5notNAsInCond_withPredSex_AMPL.png'), 
@@ -109,7 +118,7 @@ ggplot(sign_mtc, aes(Condition, Module, fill = Correlation)) +
   geom_vline(xintercept = 2.5) +
   geom_vline(xintercept = 7.5) +
   geom_vline(xintercept = 9.5) +
-  geom_vline(xintercept = 18.5) + 
+  geom_vline(xintercept = 17.5) + 
   ylab('Modules') +
   xlab('Traits') +
   scale_fill_gradientn('Correlation:  ', colors = blueWhiteRed(50), limits = c(-1, 1)) +
@@ -139,8 +148,8 @@ ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power',
 
 ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
                          sth_power,'_MCH', MCH, '_MMS', MMS,'_DS', DS,
-                         '_', species, 'onlySignModules_less001_withPredSex_withJUNE.png'), 
-       scale = 0.9, width = 10.5, height = 8)
+                         '_', species, 'onlySignModules_less001_withPredSex_withJUNE_AMPL.png'), 
+       scale = 0.9, width = 11.5, height = 8)
 
 ggsave(filename = paste0(dir_to_save, 'cor_heatmap_power', 
                          sth_power,'_MCH', 0.15, '_MMS', 25,'_DS', 4,
